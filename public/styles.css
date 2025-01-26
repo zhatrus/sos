@@ -1,0 +1,445 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: url('background.png') no-repeat center center fixed;
+    background-size: cover;
+    position: relative;
+}
+
+#app {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 20px 20px 80px 20px;
+    box-sizing: border-box;
+    position: relative;
+    padding-bottom: 80px; /* Додаємо відступ для нижньої панелі */
+}
+
+.form-container {
+    width: 90%;
+    max-width: 600px;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 20px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    transform-origin: center;
+    animation: container-appear 0.5s ease-out;
+    box-sizing: border-box;
+}
+
+.form-content {
+    padding: 40px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+h1, h2 {
+    text-align: center;
+    margin-bottom: 30px;
+    color: #333;
+    font-size: 2em;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+    box-sizing: border-box;
+    padding: 0;
+}
+
+input[type="text"] {
+    width: 100%;
+    padding: 15px;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    font-size: 18px;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+    margin: 0;
+    background: rgba(255, 255, 255, 0.5);
+    font-family: Arial, sans-serif;
+}
+
+input[type="text"]:focus {
+    border-color: #007bff;
+    outline: none;
+    transform: scale(1.02);
+}
+
+button {
+    width: 100%;
+    padding: 15px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+button:hover {
+    background: #0056b3;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+#statusOptions {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.status-option {
+    position: relative;
+    padding: 20px;
+    border: 2px solid rgba(221, 221, 221, 0.5);
+    border-radius: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.status-option:hover {
+    background: rgba(0, 123, 255, 0.05);
+    transform: translateX(5px);
+}
+
+.status-option input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    cursor: pointer;
+    z-index: 1;
+    left: 0;
+    top: 0;
+}
+
+.status-text {
+    display: block;
+    padding-left: 10px;
+    position: relative;
+    z-index: 0;
+}
+
+.status-option input[type="radio"]:checked + .status-text {
+    color: #007bff;
+    font-weight: bold;
+}
+
+.status-option input[type="radio"]:checked + .status-text::before {
+    content: '→ ';
+    color: #007bff;
+}
+
+.status-option:has(input[type="radio"]:checked) {
+    background: rgba(0, 123, 255, 0.1);
+    border-color: #007bff;
+    transform: translateX(10px);
+}
+
+#additionalInfoField {
+    margin-top: 20px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+#additionalInfoField label {
+    display: block;
+    margin-bottom: 10px;
+    font-size: 18px;
+}
+
+textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 15px;
+    border: 2px solid #ddd;
+    border-radius: 15px;
+    font-size: 18px;
+    margin-top: 10px;
+    resize: vertical;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+    background: rgba(255, 255, 255, 0.5);
+    font-family: Arial, sans-serif;
+}
+
+#emailOrPhone {
+    width: 100%;
+    box-sizing: border-box;
+    background: rgba(255, 255, 255, 0.5);
+}
+
+input[type="text"], textarea {
+    width: 100%;
+    box-sizing: border-box;
+    background: rgba(255, 255, 255, 0.5);
+    margin: 0;
+    font-family: Arial, sans-serif;
+}
+
+textarea:focus {
+    border-color: #007bff;
+    outline: none;
+    transform: scale(1.02);
+}
+
+#formatHint {
+    margin-top: 20px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+#formatHint label {
+    display: block;
+    margin-bottom: 10px;
+    font-size: 18px;
+    color: #333;
+}
+
+.hint-content {
+    font-size: 16px;
+    line-height: 1.6;
+    color: #555;
+    padding: 5px 0;
+}
+
+.footer {
+    position: absolute;
+    bottom: 10px;
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 14px;
+    text-align: center;
+    width: 100%;
+}
+
+/* Стилі для нижньої панелі */
+body > .bottom-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 15px;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 9999;
+    box-sizing: border-box;
+}
+
+body > .bottom-panel button {
+    flex: 1;
+    max-width: 200px;
+    min-width: 100px;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 16px;
+    background: transparent;
+    color: #007bff;
+    border: 2px solid #007bff;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    margin: 0 5px;
+    white-space: nowrap;
+}
+
+body > .bottom-panel button:hover {
+    background: #007bff;
+    color: white;
+    transform: translateY(-2px);
+}
+
+body > .bottom-panel button.logout {
+    border-color: #dc3545;
+    color: #dc3545;
+}
+
+body > .bottom-panel button.logout:hover {
+    background: #dc3545;
+    color: white;
+}
+
+.toast-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+}
+
+.toast {
+    position: fixed;
+    top: -100px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 15px 30px;
+    background: white;
+    color: #333;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    font-size: 16px;
+    transition: top 0.3s ease-in-out;
+    z-index: 10000;
+}
+
+.toast.show {
+    top: 20px;
+}
+
+.toast.error {
+    border-left: 4px solid #dc3545;
+}
+
+.toast.success {
+    border-left: 4px solid #28a745;
+}
+
+.toast.info {
+    border-left: 4px solid #17a2b8;
+}
+
+@keyframes toast-appear {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Анімації */
+@keyframes container-appear {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.animate-title {
+    animation: slide-down 0.5s ease-out;
+}
+
+.animate-up {
+    animation: slide-up 0.5s ease-out;
+    animation-fill-mode: both;
+}
+
+@keyframes slide-down {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slide-up {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Медіа-запити */
+@media (max-width: 768px) {
+    #app {
+        justify-content: center;
+        padding: 15px;
+    }
+
+    .form-container {
+        max-width: 100%;
+    }
+
+    .form-content {
+        padding: 25px;
+    }
+
+    h1, h2 {
+        font-size: 1.8em;
+    }
+
+    .status-option {
+        font-size: 16px;
+        padding: 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    .form-content {
+        padding: 20px;
+    }
+
+    h1, h2 {
+        font-size: 1.6em;
+        margin-bottom: 20px;
+    }
+
+    input[type="text"],
+    button,
+    textarea {
+        font-size: 16px;
+    }
+
+    .status-option {
+        font-size: 15px;
+        padding: 12px;
+    }
+}
+
+/* Стилі для планшетів */
+@media (min-width: 768px) and (max-width: 1024px) {
+    .form-container {
+        max-width: 80%;
+    }
+}
