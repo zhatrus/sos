@@ -2,12 +2,33 @@ const express = require('express');
 const bodyParser = require('body-parser'); // Імпорт body-parser
 const cors = require('cors');
 require('dotenv').config();
+const webpush = require('web-push');
+
+// Налаштування VAPID для web-push
+const vapidPublicKey = 'BCk6qwfWbMvaPwjF8yQtetIvwXAY-20gVNCI0ARYSoxJICv8x2ix9oI_J2H7s-TT_IPoe7N0MNOheI-3eUfNtV8';
+const vapidPrivateKey = 'LUI_P9IRa2N0YBh2VnSmkE_hnr5D3hFdxlKbs3RO0L0';
+
+webpush.setVapidDetails(
+    'mailto:example@caritas.ua',
+    vapidPublicKey,
+    vapidPrivateKey
+);
 
 const authenticate = (req, res, next) => {
     const token = req.headers['authorization'];
 
     if (token === process.env.ADMIN_TOKEN) {
         next(); // Пропускаємо запит далі
+    } else {
+        res.status(403).json({ message: 'Доступ заборонено' });
+    }
+};
+
+const authenticatePush = (req, res, next) => {
+    const token = req.headers['authorization'];
+
+    if (token === process.env.PUSH_TOKEN) {
+        next();
     } else {
         res.status(403).json({ message: 'Доступ заборонено' });
     }
@@ -167,6 +188,102 @@ app.post('/api/update-users', authenticate, async (req, res) => {
         logToFile('users_list_update_error', { error: error.message });
         res.status(500).json({ message: 'Помилка при оновленні списку користувачів' });
     }
+});
+
+// Функція для роботи з підписками
+function loadSubscriptions() {
+    const filePath = path.join(__dirname, 'subscriptions.json');
+    if (!fs.existsSync(filePath)) {
+        fs.writeFileSync(filePath, '{}', 'utf8');
+        return {};
+    }
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+}
+
+function saveSubscriptions(subscriptions) {
+    const filePath = path.join(__dirname, 'subscriptions.json');
+    fs.writeFileSync(filePath, JSON.stringify(subscriptions, null, 2), 'utf8');
+}
+
+// Зберігання підписок
+let subscriptions = loadSubscriptions();
+
+// Маршрут для збереження push-підписки
+app.post('/api/push-subscription', (req, res) => {
+    const { subscription, emailOrPhone } = req.body;
+    
+    if (!subscription || !emailOrPhone) {
+        return res.status(400).json({ message: 'Відсутні необхідні дані' });
+    }
+
+    // Зберігаємо підписку з прив'язкою до користувача
+    subscriptions[emailOrPhone] = subscription;
+    saveSubscriptions(subscriptions);
+    logToFile('push_subscription_added', { emailOrPhone });
+    
+    res.status(201).json({ message: 'Підписку збережено' });
+});
+
+// Маршрут для перевірки статусу підписки
+app.get('/api/subscription-status/:emailOrPhone', (req, res) => {
+    const { emailOrPhone } = req.params;
+    const isSubscribed = !!subscriptions[emailOrPhone];
+    res.json({ isSubscribed });
+});
+
+// Маршрут для отримання VAPID публічного ключа
+app.get('/api/vapid-public-key', (req, res) => {
+    res.send(vapidPublicKey);
+});
+
+// Маршрут для відправки push-повідомлень
+app.post('/api/send-push', authenticatePush, async (req, res) => {
+    const { users, title, body } = req.body;
+    
+    if (!users || !Array.isArray(users) || !title || !body) {
+        return res.status(400).json({ 
+            message: 'Необхідні поля: users (масив), title, body' 
+        });
+    }
+
+    const results = {
+        success: [],
+        failed: []
+    };
+
+    for (const user of users) {
+        const subscription = subscriptions[user];
+        
+        if (!subscription) {
+            results.failed.push({
+                user,
+                reason: 'Користувач не підписаний на повідомлення'
+            });
+            continue;
+        }
+
+        try {
+            const payload = JSON.stringify({
+                title,
+                body
+            });
+
+            await webpush.sendNotification(subscription, payload);
+            results.success.push(user);
+            logToFile('push_notification_sent', { user, title });
+        } catch (error) {
+            results.failed.push({
+                user,
+                reason: error.message
+            });
+            logToFile('push_notification_failed', { user, error: error.message });
+        }
+    }
+
+    res.json({
+        message: 'Відправку завершено',
+        results
+    });
 });
 
 // Basic route
