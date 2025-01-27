@@ -93,52 +93,78 @@ async function testPushNotification() {
         }
 
         // Перевіряємо підтримку push-повідомлень
-        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-            showToast('Ваш браузер не підтримує push-повідомлення', 'error');
+        if (!('serviceWorker' in navigator)) {
+            showToast('Ваш браузер не підтримує Service Worker', 'error');
             return;
         }
 
-        // Перевіряємо статус підписки
-        const statusResponse = await fetch(`/api/subscription-status/${emailOrPhone}`);
-        const { isSubscribed } = await statusResponse.json();
-
-        if (!isSubscribed) {
-            // Запитуємо дозвіл
-            const permission = await Notification.requestPermission();
-            if (permission !== 'granted') {
-                showToast('Для отримання сповіщень потрібен дозвіл', 'error');
-                return;
-            }
-
-            // Отримуємо реєстрацію service worker
-            const registration = await navigator.serviceWorker.ready;
-
-            // Отримуємо VAPID публічний ключ
-            const response = await fetch('/api/vapid-public-key');
-            const vapidPublicKey = await response.text();
-            
-            // Створюємо нову підписку
-            const subscription = await registration.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: vapidPublicKey
-            });
-
-            // Зберігаємо підписку на сервері
-            await fetch('/api/push-subscription', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    subscription,
-                    emailOrPhone
-                })
-            });
-
-            showToast('Підписку на сповіщення активовано', 'success');
+        if (!('PushManager' in window)) {
+            showToast('Ваш браузер не підтримує Push повідомлення', 'error');
+            return;
         }
 
+        // Запитуємо дозвіл на повідомлення
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+            showToast('Для роботи повідомлень потрібен ваш дозвіл', 'error');
+            return;
+        }
+
+        showToast('Налаштування повідомлень...', 'info');
+
+        // Отримуємо реєстрацію service worker
+        const registration = await navigator.serviceWorker.ready;
+        console.log('Service Worker готовий');
+        
+        // Отримуємо поточну підписку
+        let subscription = await registration.pushManager.getSubscription();
+        
+        // Якщо підписка існує, відписуємося для оновлення
+        if (subscription) {
+            console.log('Видаляємо стару підписку');
+            await subscription.unsubscribe();
+        }
+
+        // Отримуємо VAPID публічний ключ
+        const response = await fetch('/api/vapid-public-key');
+        if (!response.ok) {
+            throw new Error('Не вдалося отримати VAPID ключ');
+        }
+        const vapidPublicKey = await response.text();
+        console.log('Отримано VAPID ключ');
+        
+        // Конвертуємо VAPID ключ
+        const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
+        
+        // Створюємо нову підписку
+        console.log('Створюємо нову підписку...');
+        subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: applicationServerKey
+        });
+
+        console.log('Нова підписка створена:', subscription);
+
+        // Зберігаємо підписку на сервері
+        const subscribeResponse = await fetch('/api/push-subscription', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                subscription,
+                emailOrPhone
+            })
+        });
+
+        if (!subscribeResponse.ok) {
+            throw new Error('Помилка при збереженні підписки');
+        }
+
+        showToast('Підписку створено успішно', 'success');
+
         // Відправляємо тестове повідомлення
+        console.log('Відправляємо тестове повідомлення...');
         const testResponse = await fetch('/api/send-push', {
             method: 'POST',
             headers: {
@@ -152,26 +178,54 @@ async function testPushNotification() {
             })
         });
 
+        if (!testResponse.ok) {
+            throw new Error(`Помилка відправки: ${testResponse.status}`);
+        }
+
         const result = await testResponse.json();
+        console.log('Результат відправки:', result);
         
         if (result.results.success.includes(emailOrPhone)) {
             showToast('Тестове сповіщення надіслано успішно', 'success');
         } else {
             const failedUser = result.results.failed.find(f => f.user === emailOrPhone);
-            showToast(`Помилка: ${failedUser ? failedUser.reason : 'Невідома помилка'}`, 'error');
+            console.error('Деталі помилки:', failedUser);
+            throw new Error(failedUser ? failedUser.reason : 'Невідома помилка');
         }
     } catch (error) {
         console.error('Помилка при тестуванні сповіщень:', error);
-        showToast('Помилка при тестуванні сповіщень', 'error');
+        showToast('Помилка: ' + error.message, 'error');
+        throw error; // Прокидаємо помилку далі для обробки в обробнику подій
     }
+}
+
+// Функція для конвертації VAPID ключа
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding)
+        .replace(/\-/g, '+')
+        .replace(/_/g, '/');
+
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
 }
 
 // Функції для роботи з push-повідомленнями
 async function registerPushSubscription(emailOrPhone) {
     try {
         // Перевіряємо підтримку push-повідомлень
-        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-            showToast('Ваш браузер не підтримує push-повідомлення', 'error');
+        if (!('serviceWorker' in navigator)) {
+            showToast('Ваш браузер не підтримує Service Worker', 'error');
+            return;
+        }
+
+        if (!('PushManager' in window)) {
+            showToast('Ваш браузер не підтримує Push повідомлення', 'error');
             return;
         }
 
@@ -277,6 +331,42 @@ submitButton.addEventListener('click', async () => {
     }
 });
 
+// Додаємо обробники подій
+document.addEventListener('DOMContentLoaded', () => {
+    // Кнопка тестового повідомлення
+    const testButton = document.getElementById('testButton');
+    if (testButton) {
+        testButton.addEventListener('click', async () => {
+            try {
+                await testPushNotification();
+            } catch (error) {
+                console.error('Помилка при тестуванні повідомлень:', error);
+                showToast('Помилка: ' + error.message, 'error');
+            }
+        });
+    }
+
+    // Кнопка виходу
+    const logoutButton = document.getElementById('logoutButton');
+    if (logoutButton) {
+        logoutButton.addEventListener('click', handleLogout);
+    }
+
+    // Форма авторизації
+    const authForm = document.getElementById('authForm');
+    if (authForm) {
+        authForm.addEventListener('submit', handleLogin);
+    }
+
+    // Кнопка повідомлення
+    const messageButton = document.getElementById('messageButton');
+    if (messageButton) {
+        messageButton.addEventListener('click', () => {
+            showToast('Функція повідомлення ще не реалізована', 'info');
+        });
+    }
+});
+
 // Service Worker реєстрація
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', async () => {
@@ -327,10 +417,7 @@ window.addEventListener('load', async () => {
 });
 
 // Додаємо обробники подій
-document.getElementById('authForm').addEventListener('submit', handleLogin);
 document.getElementById('loginButton').addEventListener('click', handleLogin);
-document.getElementById('logoutButton').addEventListener('click', handleLogout);
 document.getElementById('infoButton').addEventListener('click', () => {
     showToast('Інформація буде доступна незабаром', 'info');
 });
-document.getElementById('testButton').addEventListener('click', testPushNotification);

@@ -64,5 +64,17 @@
     "status": "Потрібна допомога!",
     "additionalInfo": "11",
     "timestamp": "2025-01-27T09:35:50.666Z"
+  },
+  {
+    "emailOrPhone": "22",
+    "status": "Все норм, вдома",
+    "additionalInfo": "",
+    "timestamp": "2025-01-27T11:22:18.496Z"
+  },
+  {
+    "emailOrPhone": "22",
+    "status": "Все норм, вдома",
+    "additionalInfo": "",
+    "timestamp": "2025-01-27T11:39:15.179Z"
   }
 ]

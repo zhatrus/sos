@@ -4,14 +4,21 @@ const cors = require('cors');
 require('dotenv').config();
 const webpush = require('web-push');
 
-// Налаштування VAPID для web-push
-const vapidPublicKey = 'BCk6qwfWbMvaPwjF8yQtetIvwXAY-20gVNCI0ARYSoxJICv8x2ix9oI_J2H7s-TT_IPoe7N0MNOheI-3eUfNtV8';
-const vapidPrivateKey = 'LUI_P9IRa2N0YBh2VnSmkE_hnr5D3hFdxlKbs3RO0L0';
+// Генеруємо нові VAPID ключі, якщо вони не існують
+if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
+    const vapidKeys = webpush.generateVAPIDKeys();
+    console.log('Нові VAPID ключі згенеровано:');
+    console.log('Public Key:', vapidKeys.publicKey);
+    console.log('Private Key:', vapidKeys.privateKey);
+    console.log('Додайте ці ключі у ваш .env файл як VAPID_PUBLIC_KEY та VAPID_PRIVATE_KEY');
+    process.exit(1);
+}
 
+// Налаштування VAPID для web-push
 webpush.setVapidDetails(
-    'mailto:example@caritas.ua',
-    vapidPublicKey,
-    vapidPrivateKey
+    'mailto:' + (process.env.VAPID_EMAIL || 'example@caritas.ua'),
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
 );
 
 const authenticate = (req, res, next) => {
@@ -192,17 +199,35 @@ app.post('/api/update-users', authenticate, async (req, res) => {
 
 // Функція для роботи з підписками
 function loadSubscriptions() {
-    const filePath = path.join(__dirname, 'subscriptions.json');
-    if (!fs.existsSync(filePath)) {
-        fs.writeFileSync(filePath, '{}', 'utf8');
+    try {
+        const filePath = path.join(__dirname, 'subscriptions.json');
+        if (!fs.existsSync(filePath)) {
+            console.log('Файл підписок не існує, створюємо новий');
+            fs.writeFileSync(filePath, '{}', 'utf8');
+            return {};
+        }
+        const data = fs.readFileSync(filePath, 'utf8');
+        console.log('Завантажено підписки з файлу:', data);
+        return JSON.parse(data);
+    } catch (error) {
+        console.error('Помилка при завантаженні підписок:', error);
         return {};
     }
-    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
 
 function saveSubscriptions(subscriptions) {
-    const filePath = path.join(__dirname, 'subscriptions.json');
-    fs.writeFileSync(filePath, JSON.stringify(subscriptions, null, 2), 'utf8');
+    try {
+        const filePath = path.join(__dirname, 'subscriptions.json');
+        const data = JSON.stringify(subscriptions, null, 2);
+        fs.writeFileSync(filePath, data, 'utf8');
+        console.log('Підписки збережено у файл:', data);
+    } catch (error) {
+        console.error('Помилка при збереженні підписок:', error);
+        logToFile('save_subscriptions_error', { 
+            error: error.message,
+            stack: error.stack 
+        });
+    }
 }
 
 // Зберігання підписок
@@ -210,18 +235,39 @@ let subscriptions = loadSubscriptions();
 
 // Маршрут для збереження push-підписки
 app.post('/api/push-subscription', (req, res) => {
-    const { subscription, emailOrPhone } = req.body;
-    
-    if (!subscription || !emailOrPhone) {
-        return res.status(400).json({ message: 'Відсутні необхідні дані' });
-    }
+    try {
+        const { subscription, emailOrPhone } = req.body;
+        
+        if (!subscription || !emailOrPhone) {
+            return res.status(400).json({ message: 'Відсутні необхідні дані' });
+        }
 
-    // Зберігаємо підписку з прив'язкою до користувача
-    subscriptions[emailOrPhone] = subscription;
-    saveSubscriptions(subscriptions);
-    logToFile('push_subscription_added', { emailOrPhone });
-    
-    res.status(201).json({ message: 'Підписку збережено' });
+        console.log('Отримано нову підписку для користувача:', emailOrPhone);
+        console.log('Дані підписки:', subscription);
+
+        // Зберігаємо підписку з прив'язкою до користувача
+        subscriptions[emailOrPhone] = subscription;
+        saveSubscriptions(subscriptions);
+        
+        console.log('Поточні підписки:', subscriptions);
+        logToFile('push_subscription_added', { emailOrPhone, subscription });
+        
+        res.status(201).json({ 
+            message: 'Підписку збережено',
+            subscriptionData: subscriptions[emailOrPhone]
+        });
+    } catch (error) {
+        console.error('Помилка при збереженні підписки:', error);
+        logToFile('push_subscription_error', { 
+            emailOrPhone, 
+            error: error.message,
+            stack: error.stack 
+        });
+        res.status(500).json({ 
+            message: 'Помилка при збереженні підписки',
+            error: error.message 
+        });
+    }
 });
 
 // Маршрут для перевірки статусу підписки
@@ -233,7 +279,7 @@ app.get('/api/subscription-status/:emailOrPhone', (req, res) => {
 
 // Маршрут для отримання VAPID публічного ключа
 app.get('/api/vapid-public-key', (req, res) => {
-    res.send(vapidPublicKey);
+    res.send(process.env.VAPID_PUBLIC_KEY);
 });
 
 // Маршрут для відправки push-повідомлень
@@ -263,20 +309,42 @@ app.post('/api/send-push', authenticatePush, async (req, res) => {
         }
 
         try {
+            console.log('Відправка повідомлення для користувача:', user);
+            console.log('Підписка:', subscription);
+            
             const payload = JSON.stringify({
                 title,
-                body
+                body,
+                timestamp: new Date().toISOString()
             });
 
             await webpush.sendNotification(subscription, payload);
+            console.log('Повідомлення успішно відправлено');
             results.success.push(user);
             logToFile('push_notification_sent', { user, title });
         } catch (error) {
-            results.failed.push({
-                user,
-                reason: error.message
+            console.error('Помилка відправки для користувача', user, ':', error);
+            
+            // Якщо підписка більше недійсна, видаляємо її
+            if (error.statusCode === 410 || error.statusCode === 404) {
+                delete subscriptions[user];
+                saveSubscriptions(subscriptions);
+                results.failed.push({
+                    user,
+                    reason: 'Підписка недійсна, потрібна повторна підписка'
+                });
+            } else {
+                results.failed.push({
+                    user,
+                    reason: error.message || 'Невідома помилка'
+                });
+            }
+            logToFile('push_notification_failed', { 
+                user, 
+                error: error.message,
+                statusCode: error.statusCode,
+                stack: error.stack
             });
-            logToFile('push_notification_failed', { user, error: error.message });
         }
     }
 
