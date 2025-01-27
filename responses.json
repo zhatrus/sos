@@ -52,5 +52,17 @@
     "status": "Все норм, вдома",
     "additionalInfo": "",
     "timestamp": "2025-01-27T07:44:47.335Z"
+  },
+  {
+    "emailOrPhone": "66",
+    "status": "Все норм, вдома",
+    "additionalInfo": "",
+    "timestamp": "2025-01-27T09:35:46.075Z"
+  },
+  {
+    "emailOrPhone": "66",
+    "status": "Потрібна допомога!",
+    "additionalInfo": "11",
+    "timestamp": "2025-01-27T09:35:50.666Z"
   }
 ]

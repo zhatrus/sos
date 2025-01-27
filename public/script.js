@@ -279,12 +279,16 @@ submitButton.addEventListener('click', async () => {
 
 // Service Worker реєстрація
 if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').then((registration) => {
+    window.addEventListener('load', async () => {
+        try {
+            const registration = await navigator.serviceWorker.register('/sw.js', {
+                scope: '/'
+            });
             console.log('Service Worker зареєстровано:', registration);
-        }).catch((error) => {
-            console.log('Service Worker не зареєстровано:', error);
-        });
+        } catch (error) {
+            console.error('Service Worker не зареєстровано:', error);
+            showToast('Помилка реєстрації Service Worker: ' + error.message, 'error');
+        }
     });
 }
 

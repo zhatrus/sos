@@ -286,6 +286,71 @@ app.post('/api/send-push', authenticatePush, async (req, res) => {
     });
 });
 
+// Маршрут для отримання файлу підписок для Google Apps Script
+app.get('/subscriptions.json', authenticate, (req, res) => {
+    try {
+        const filePath = path.join(__dirname, 'subscriptions.json');
+        if (!fs.existsSync(filePath)) {
+            return res.status(200).json({});
+        }
+        const subscriptionsData = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        res.status(200).json(subscriptionsData);
+    } catch (error) {
+        console.error('Помилка при читанні файлу підписок:', error);
+        res.status(500).json({ error: 'Помилка при читанні файлу підписок' });
+    }
+});
+
+// Маршрут для відправки сповіщень через Google Apps Script
+app.post('/api/send-notification', authenticatePush, async (req, res) => {
+    const { users, title, body } = req.body;
+    
+    if (!users || !Array.isArray(users) || !title || !body) {
+        return res.status(400).json({ 
+            message: 'Необхідні поля: users (масив), title, body' 
+        });
+    }
+
+    const results = {
+        success: [],
+        failed: []
+    };
+
+    for (const user of users) {
+        const subscription = subscriptions[user];
+        
+        if (!subscription) {
+            results.failed.push({
+                user,
+                reason: 'Користувач не підписаний на повідомлення'
+            });
+            continue;
+        }
+
+        try {
+            const payload = JSON.stringify({
+                title,
+                body
+            });
+
+            await webpush.sendNotification(subscription, payload);
+            results.success.push(user);
+            logToFile('push_notification_sent', { user, title });
+        } catch (error) {
+            results.failed.push({
+                user,
+                reason: error.message
+            });
+            logToFile('push_notification_failed', { user, error: error.message });
+        }
+    }
+
+    res.json({
+        message: 'Відправку завершено',
+        results
+    });
+});
+
 // Basic route
 app.get('/', (req, res) => {
     res.send('PWA App is running!');
