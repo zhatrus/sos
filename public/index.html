@@ -1,73 +1,105 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-    <link rel="manifest" href="/manifest.json">
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Caritas Status App</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
     <div id="app">
-        <!-- Блок авторизації -->
-        <div id="auth" class="form-container">
-            <div class="form-content">
-                <h1 class="animate-title">Авторизація</h1>
-                <form class="input-group" id="authForm" onsubmit="return false;">
-                    <input type="text" id="emailOrPhone" placeholder="Введіть email або номер телефону" class="animate-up">
-                    <div id="formatHint" class="animate-up">
-                        <label>Формат вводу:</label>
-                        <div class="hint-content">
-                            • Email: xxxx@caritas.ua<br>
-                            • Телефон: 380xxxxxxxxx (12 цифр без пробілів)
-                        </div>
-                    </div>
-                    <button type="submit" id="loginButton" class="animate-up">Увійти</button>
-                </form>
+      <!-- Блок авторизації -->
+      <div id="auth" class="form-container">
+        <div class="form-content">
+          <h1 class="animate-title">Авторизація</h1>
+          <form class="input-group" id="authForm" onsubmit="return false;">
+            <input
+              type="text"
+              id="emailOrPhone"
+              placeholder="Введіть email або номер телефону"
+              class="animate-up"
+            />
+            <div id="formatHint" class="animate-up">
+              <label>Формат вводу:</label>
+              <div class="hint-content">
+                • Email: xxxx@caritas.ua<br />
+                • Телефон: 380xxxxxxxxx (12 цифр без пробілів)
+              </div>
             </div>
+            <button type="submit" id="loginButton" class="animate-up">
+              Увійти
+            </button>
+          </form>
         </div>
+      </div>
 
-        <!-- Форма для вибору статусу -->
-        <div id="status-form" class="form-container" style="display: none;">
-            <div class="form-content">
-                <h2 class="animate-title">Оберіть свій статус:</h2>
-                <div id="statusOptions">
-                    <div class="status-option animate-up">
-                        <input type="radio" name="status" value="Все норм, вдома" required>
-                        <span class="status-text">Все норм, вдома (в безпечному місці)</span>
-                    </div>
-                    <div class="status-option animate-up">
-                        <input type="radio" name="status" value="Норм (але немає зв'язку/світла/тепло/інше)">
-                        <span class="status-text">Норм (але немає зв'язку/світла/тепло/інше)</span>
-                    </div>
-                    <div class="status-option animate-up">
-                        <input type="radio" name="status" value="Маю проблеми, не критично">
-                        <span class="status-text">Маю проблеми, не критично</span>
-                    </div>
-                    <div class="status-option animate-up">
-                        <input type="radio" name="status" value="Потрібна допомога!">
-                        <span class="status-text">Потрібна допомога!</span>
-                    </div>
-                    <div id="additionalInfoField" style="display: none;" class="animate-up">
-                        <label for="additionalInfo">Додаткова інформація:</label>
-                        <textarea id="additionalInfo" name="additionalInfo" rows="3"></textarea>
-                    </div>
-                    <button id="submitButton" class="animate-up">Відправити</button>
-                </div>
+      <!-- Форма для вибору статусу -->
+      <div id="status-form" class="form-container" style="display: none">
+        <div class="form-content">
+          <h2 class="animate-title">Оберіть свій статус:</h2>
+          <div id="statusOptions">
+            <div class="status-option animate-up">
+              <input
+                type="radio"
+                name="status"
+                value="Все норм, вдома"
+                required
+              />
+              <span class="status-text"
+                >Все норм, вдома (в безпечному місці)</span
+              >
             </div>
+            <div class="status-option animate-up">
+              <input
+                type="radio"
+                name="status"
+                value="Норм (але немає зв'язку/світла/тепло/інше)"
+              />
+              <span class="status-text"
+                >Норм (але немає зв'язку/світла/тепло/інше)</span
+              >
+            </div>
+            <div class="status-option animate-up">
+              <input
+                type="radio"
+                name="status"
+                value="Маю проблеми, не критично"
+              />
+              <span class="status-text">Маю проблеми, не критично</span>
+            </div>
+            <div class="status-option animate-up">
+              <input type="radio" name="status" value="Потрібна допомога!" />
+              <span class="status-text">Потрібна допомога!</span>
+            </div>
+            <div
+              id="additionalInfoField"
+              style="display: none"
+              class="animate-up"
+            >
+              <label for="additionalInfo">Додаткова інформація:</label>
+              <textarea
+                id="additionalInfo"
+                name="additionalInfo"
+                rows="3"
+              ></textarea>
+            </div>
+            <button id="submitButton" class="animate-up">Відправити</button>
+          </div>
         </div>
-        <div class="footer">Caritas 2025</div>
+      </div>
     </div>
 
     <!-- Нижня панель з кнопками -->
     <div class="bottom-panel">
-        <button id="infoButton">Інформація</button>
-        <button id="testButton" style="display: none;">Push-повідомлення</button>
-        <button id="logoutButton" class="logout">Вихід</button>
+      <button id="infoButton">Інформація</button>
+      <button id="testButton" style="display: none">Push</button>
+      <button id="logoutButton" class="logout">Вихід</button>
     </div>
+    <div class="footer">Caritas 2025</div>
 
     <script src="script.js"></script>
-</body>
+  </body>
 </html>

@@ -27,7 +27,7 @@ body {
 .form-container {
     width: 90%;
     max-width: 600px;
-    background: rgba(255, 255, 255, 0.85);
+    background: rgba(255, 255, 255, 0.8);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     border-radius: 20px;
@@ -229,34 +229,28 @@ textarea:focus {
     padding: 5px 0;
 }
 
-.footer {
-    position: absolute;
-    bottom: 10px;
-    color: rgba(255, 255, 255, 0.3);
-    font-size: 14px;
-    text-align: center;
-    width: 100%;
-}
+
 
 /* Стилі для нижньої панелі */
 body > .bottom-panel {
     position: fixed;
-    bottom: 0;
+    bottom: 25px;
     left: 0;
     right: 0;
     width: 100%;
-    background: rgba(255, 255, 255, 0.95);
+    background: rgba(255, 255, 255, 0.8);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    padding: 15px;
+    padding: 15px 10px 10px 10px;
     display: flex;
     justify-content: space-around;
-    align-items: center;
+    align-items: baseline;
     gap: 10px;
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    /* box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1); */
     z-index: 9999;
     box-sizing: border-box;
 }
+
 
 body > .bottom-panel button {
     flex: 1;
@@ -289,6 +283,22 @@ body > .bottom-panel button.logout:hover {
     background: #dc3545;
     color: white;
 }
+
+.footer {
+    position: fixed;
+    bottom: 0px;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    /* box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1); */
+    color: rgba(0, 0, 0, 0.8);
+    font-size: 13px;
+    text-align: center;
+    width: 100%;
+    z-index: 9998;
+    padding: 5px;
+}
+
 
 .toast-container {
     position: fixed;
@@ -351,7 +361,7 @@ body > .bottom-panel button.logout:hover {
 @keyframes container-appear {
     from {
         opacity: 0;
-        transform: scale(0.9);
+        transform: scale(1.5);
     }
     to {
         opacity: 1;
@@ -360,11 +370,11 @@ body > .bottom-panel button.logout:hover {
 }
 
 .animate-title {
-    animation: slide-down 0.5s ease-out;
+    animation: slide-down 0.9s ease-out;
 }
 
 .animate-up {
-    animation: slide-up 0.5s ease-out;
+    animation: slide-up 0.9s ease-out;
     animation-fill-mode: both;
 }
 

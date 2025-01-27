@@ -1,23 +1,23 @@
 {
-  "name": "pwa-app",
+  "name": "caritas-status-app",
   "version": "1.0.0",
-  "description": "",
+  "description": "Caritas Status Application with Push Notifications",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
-    "body-parser": "^1.20.3",
+    "express": "^4.18.2",
+    "body-parser": "^1.20.2",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.7",
-    "express": "^4.21.2",
-    "web-push": "^3.6.7"
+    "dotenv": "^16.3.1",
+    "web-push": "^3.6.6"
   },
   "devDependencies": {
-    "nodemon": "^3.1.9"
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=14.0.0"
   }
 }

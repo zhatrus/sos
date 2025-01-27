@@ -43,6 +43,7 @@ function handleLogout() {
     document.getElementById('status-form').style.display = 'none';
     document.getElementById('emailOrPhone').value = '';
     document.getElementById('testButton').style.display = 'none';
+    document.getElementById('logoutButton').style.display = 'none';
     showToast('Ви вийшли з системи', 'success');
 }
 
@@ -71,6 +72,7 @@ async function handleLogin(event) {
             document.getElementById('auth').style.display = 'none';
             document.getElementById('status-form').style.display = 'block';
             document.getElementById('testButton').style.display = 'block';
+            document.getElementById('logoutButton').style.display = 'block';
             showToast('Успішна авторизація!', 'success');
             await registerPushSubscription(emailOrPhone);
         } else {
@@ -301,18 +303,22 @@ window.addEventListener('load', async () => {
                 document.getElementById('auth').style.display = 'none';
                 document.getElementById('status-form').style.display = 'block';
                 document.getElementById('testButton').style.display = 'block';
+                document.getElementById('logoutButton').style.display = 'block';
                 showToast('Автоматичний вхід успішний!', 'success');
             } else {
                 localStorage.removeItem('user');
                 document.getElementById('testButton').style.display = 'none';
+                document.getElementById('logoutButton').style.display = 'none';
             }
         } catch (error) {
             console.error('Помилка при автоматичній авторизації:', error);
             localStorage.removeItem('user');
             document.getElementById('testButton').style.display = 'none';
+            document.getElementById('logoutButton').style.display = 'none';
         }
     } else {
         document.getElementById('testButton').style.display = 'none';
+        document.getElementById('logoutButton').style.display = 'none';
     }
 });
 
