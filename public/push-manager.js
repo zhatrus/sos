@@ -1,6 +1,6 @@
 class PushManager {
   constructor() {
-    this.publicKey = 'BLBx-hXvnGqK3eZKvCxHIGHUJ0VPgxUYCn2LL4bqnqOPiQmjgvV-cWdKqxsEj_YF0NEofaFdF5NqGFnF5ANqHRw';
+    this.publicKey = null;
   }
 
   async init() {
@@ -10,11 +10,25 @@ class PushManager {
     }
 
     try {
+      // Отримуємо публічний ключ з сервера
+      const keyResponse = await fetch('/api/vapid-public-key');
+      if (!keyResponse.ok) {
+        throw new Error('Не вдалося отримати VAPID публічний ключ');
+      }
+      const { publicKey } = await keyResponse.json();
+      this.publicKey = publicKey;
+      
+      console.log('Отримано публічний ключ:', this.publicKey);
+
       const registration = await navigator.serviceWorker.register('/service-worker.js');
+      console.log('Service Worker зареєстровано успішно');
+
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: this.urlBase64ToUint8Array(this.publicKey)
       });
+      
+      console.log('Push підписка створена:', subscription);
 
       // Відправляємо підписку на сервер
       const response = await fetch('/api/subscribe', {
@@ -31,7 +45,8 @@ class PushManager {
       if (!response.ok) {
         throw new Error('Помилка при збереженні підписки');
       }
-
+      
+      console.log('Підписка успішно збережена на сервері');
       return true;
     } catch (error) {
       console.error('Помилка ініціалізації push-сповіщень:', error);

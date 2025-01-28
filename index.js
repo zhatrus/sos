@@ -201,16 +201,13 @@ app.post('/api/update-users', authenticate, async (req, res) => {
 function loadSubscriptions() {
     try {
         const filePath = path.join(__dirname, 'subscriptions.json');
-        if (!fs.existsSync(filePath)) {
-            console.log('Файл підписок не існує, створюємо новий');
-            fs.writeFileSync(filePath, '{}', 'utf8');
-            return {};
+        if (fs.existsSync(filePath)) {
+            const data = fs.readFileSync(filePath, 'utf8');
+            return JSON.parse(data);
         }
-        const data = fs.readFileSync(filePath, 'utf8');
-        console.log('Завантажено підписки з файлу:', data);
-        return JSON.parse(data);
+        return {};
     } catch (error) {
-        console.error('Помилка при завантаженні підписок:', error);
+        console.error('Помилка завантаження підписок:', error);
         return {};
     }
 }
@@ -218,140 +215,242 @@ function loadSubscriptions() {
 function saveSubscriptions(subscriptions) {
     try {
         const filePath = path.join(__dirname, 'subscriptions.json');
-        const data = JSON.stringify(subscriptions, null, 2);
-        fs.writeFileSync(filePath, data, 'utf8');
-        console.log('Підписки збережено у файл:', data);
+        fs.writeFileSync(filePath, JSON.stringify(subscriptions, null, 2), 'utf8');
+        console.log('Підписки збережено успішно');
     } catch (error) {
-        console.error('Помилка при збереженні підписок:', error);
-        logToFile('save_subscriptions_error', { 
-            error: error.message,
-            stack: error.stack 
-        });
+        console.error('Помилка збереження підписок:', error);
     }
 }
 
 // Зберігання підписок
 let subscriptions = loadSubscriptions();
 
-// Маршрут для збереження push-підписки
-app.post('/api/push-subscription', (req, res) => {
+// Маршрут для отримання VAPID публічного ключа
+app.get('/api/vapid-public-key', (req, res) => {
     try {
-        const { subscription, emailOrPhone } = req.body;
+        const publicKey = process.env.VAPID_PUBLIC_KEY;
         
-        if (!subscription || !emailOrPhone) {
-            return res.status(400).json({ message: 'Відсутні необхідні дані' });
+        if (!publicKey) {
+            logToFile('vapid_key_error', {
+                error: 'VAPID_PUBLIC_KEY not found in environment'
+            });
+            return res.status(500).json({ 
+                error: 'VAPID public key not configured' 
+            });
         }
 
-        console.log('Отримано нову підписку для користувача:', emailOrPhone);
-        console.log('Дані підписки:', subscription);
-
-        // Зберігаємо підписку з прив'язкою до користувача
-        subscriptions[emailOrPhone] = subscription;
-        saveSubscriptions(subscriptions);
-        
-        console.log('Поточні підписки:', subscriptions);
-        logToFile('push_subscription_added', { emailOrPhone, subscription });
-        
-        res.status(201).json({ 
-            message: 'Підписку збережено',
-            subscriptionData: subscriptions[emailOrPhone]
+        // Логуємо ключ для діагностики
+        logToFile('vapid_key_request', {
+            publicKey: publicKey
         });
+
+        // Перевіряємо, чи ключ є валідним base64url
+        const isValidBase64Url = /^[A-Za-z0-9\-_]+$/i.test(publicKey);
+        if (!isValidBase64Url) {
+            logToFile('vapid_key_error', {
+                error: 'Invalid VAPID public key format',
+                publicKey: publicKey
+            });
+            return res.status(500).json({ 
+                error: 'Invalid VAPID public key format' 
+            });
+        }
+
+        // Відправляємо тільки сам ключ, без обгортки в об'єкт
+        res.json({ publicKey: publicKey.trim() });
     } catch (error) {
-        console.error('Помилка при збереженні підписки:', error);
-        logToFile('push_subscription_error', { 
-            emailOrPhone, 
+        logToFile('vapid_key_error', {
             error: error.message,
-            stack: error.stack 
+            stack: error.stack
         });
         res.status(500).json({ 
-            message: 'Помилка при збереженні підписки',
-            error: error.message 
+            error: 'Error retrieving VAPID public key' 
         });
     }
 });
 
-// Маршрут для перевірки статусу підписки
-app.get('/api/subscription-status/:emailOrPhone', (req, res) => {
-    const { emailOrPhone } = req.params;
-    const isSubscribed = !!subscriptions[emailOrPhone];
-    res.json({ isSubscribed });
-});
+// Маршрут для збереження push-підписки
+app.post('/api/subscribe', async (req, res) => {
+    try {
+        const { subscription, emailOrPhone } = req.body;
+        
+        logToFile('push_subscription_attempt', {
+            endpoint: subscription.endpoint,
+            emailOrPhone
+        });
 
-// Маршрут для отримання VAPID публічного ключа
-app.get('/api/vapid-public-key', (req, res) => {
-    res.send(process.env.VAPID_PUBLIC_KEY);
+        if (!subscription || !emailOrPhone) {
+            logToFile('push_subscription_error', {
+                error: 'Missing required fields',
+                subscription,
+                emailOrPhone
+            });
+            return res.status(400).json({ message: 'Відсутні обов\'язкові поля' });
+        }
+
+        // Завантажуємо існуючі підписки
+        const subscriptions = loadSubscriptions();
+        
+        // Перевіряємо чи існує масив підписок для користувача
+        if (!subscriptions[emailOrPhone]) {
+            subscriptions[emailOrPhone] = [];
+        }
+
+        // Перевіряємо чи вже існує така підписка
+        const existingSubIndex = subscriptions[emailOrPhone].findIndex(
+            sub => sub.endpoint === subscription.endpoint
+        );
+
+        if (existingSubIndex !== -1) {
+            // Оновлюємо існуючу підписку
+            subscriptions[emailOrPhone][existingSubIndex] = subscription;
+            logToFile('push_subscription_updated', {
+                emailOrPhone,
+                endpoint: subscription.endpoint
+            });
+        } else {
+            // Додаємо нову підписку
+            subscriptions[emailOrPhone].push(subscription);
+            logToFile('push_subscription_added', {
+                emailOrPhone,
+                endpoint: subscription.endpoint
+            });
+        }
+        
+        // Зберігаємо оновлені підписки
+        saveSubscriptions(subscriptions);
+        
+        logToFile('push_subscription_success', {
+            emailOrPhone,
+            subscriptionsCount: subscriptions[emailOrPhone].length
+        });
+
+        res.status(201).json({ 
+            message: 'Підписку успішно збережено',
+            subscriptionsCount: subscriptions[emailOrPhone].length
+        });
+    } catch (error) {
+        logToFile('push_subscription_error', {
+            error: error.message,
+            stack: error.stack
+        });
+        console.error('Помилка при збереженні push-підписки:', error);
+        res.status(500).json({ message: 'Помилка при збереженні підписки' });
+    }
 });
 
 // Маршрут для відправки push-повідомлень
 app.post('/api/send-push', authenticatePush, async (req, res) => {
-    const { users, title, body } = req.body;
-    
-    if (!users || !Array.isArray(users) || !title || !body) {
-        return res.status(400).json({ 
-            message: 'Необхідні поля: users (масив), title, body' 
-        });
-    }
-
-    const results = {
-        success: [],
-        failed: []
-    };
-
-    for (const user of users) {
-        const subscription = subscriptions[user];
+    try {
+        const { title, body, users } = req.body;
         
-        if (!subscription) {
-            results.failed.push({
-                user,
-                reason: 'Користувач не підписаний на повідомлення'
+        logToFile('push_notification_attempt', {
+            title,
+            body,
+            users
+        });
+
+        if (!title || !body) {
+            logToFile('push_notification_error', {
+                error: 'Missing required fields',
+                payload: req.body
             });
-            continue;
+            return res.status(400).json({ message: 'Відсутні обов\'язкові поля' });
         }
 
-        try {
-            console.log('Відправка повідомлення для користувача:', user);
-            console.log('Підписка:', subscription);
-            
-            const payload = JSON.stringify({
-                title,
-                body,
-                timestamp: new Date().toISOString()
-            });
+        const subscriptions = loadSubscriptions();
+        const notificationPayload = {
+            title,
+            body,
+            timestamp: new Date().toISOString()
+        };
 
-            await webpush.sendNotification(subscription, payload);
-            console.log('Повідомлення успішно відправлено');
-            results.success.push(user);
-            logToFile('push_notification_sent', { user, title });
-        } catch (error) {
-            console.error('Помилка відправки для користувача', user, ':', error);
-            
-            // Якщо підписка більше недійсна, видаляємо її
-            if (error.statusCode === 410 || error.statusCode === 404) {
-                delete subscriptions[user];
-                saveSubscriptions(subscriptions);
+        const results = {
+            success: [],
+            failed: []
+        };
+
+        // Якщо вказані конкретні користувачі, відправляємо тільки їм
+        const targetUsers = users || Object.keys(subscriptions);
+
+        for (const user of targetUsers) {
+            if (!subscriptions[user]) {
                 results.failed.push({
                     user,
-                    reason: 'Підписка недійсна, потрібна повторна підписка'
+                    reason: 'Користувач не має підписок'
                 });
-            } else {
-                results.failed.push({
-                    user,
-                    reason: error.message || 'Невідома помилка'
-                });
+                continue;
             }
-            logToFile('push_notification_failed', { 
-                user, 
-                error: error.message,
-                statusCode: error.statusCode,
-                stack: error.stack
-            });
-        }
-    }
 
-    res.json({
-        message: 'Відправку завершено',
-        results
-    });
+            logToFile('push_notification_sending', {
+                user,
+                subscriptionsCount: subscriptions[user].length,
+                payload: notificationPayload
+            });
+
+            for (const subscription of subscriptions[user]) {
+                try {
+                    await webpush.sendNotification(
+                        subscription,
+                        JSON.stringify(notificationPayload)
+                    );
+                    
+                    results.success.push({
+                        user,
+                        endpoint: subscription.endpoint
+                    });
+                    
+                    logToFile('push_notification_success', {
+                        user,
+                        endpoint: subscription.endpoint
+                    });
+                } catch (error) {
+                    const failureInfo = {
+                        user,
+                        endpoint: subscription.endpoint,
+                        error: error.message
+                    };
+
+                    results.failed.push(failureInfo);
+                    
+                    logToFile('push_notification_failed', failureInfo);
+
+                    // Якщо підписка недійсна, видаляємо її
+                    if (error.statusCode === 410 || error.statusCode === 404) {
+                        subscriptions[user] = subscriptions[user].filter(
+                            sub => sub.endpoint !== subscription.endpoint
+                        );
+                        
+                        logToFile('push_subscription_removed', {
+                            user,
+                            endpoint: subscription.endpoint,
+                            reason: 'Invalid subscription'
+                        });
+                    }
+                }
+            }
+        }
+
+        // Зберігаємо оновлені підписки (якщо були видалені недійсні)
+        saveSubscriptions(subscriptions);
+        
+        logToFile('push_notification_summary', {
+            totalSuccess: results.success.length,
+            totalFailed: results.failed.length
+        });
+
+        res.json({
+            message: `Сповіщення відправлено: ${results.success.length} успішно, ${results.failed.length} невдало`,
+            results
+        });
+    } catch (error) {
+        logToFile('push_notification_error', {
+            error: error.message,
+            stack: error.stack
+        });
+        console.error('Помилка при відправці push-сповіщення:', error);
+        res.status(500).json({ message: 'Помилка при відправці сповіщення' });
+    }
 });
 
 // Маршрут для отримання файлу підписок для Google Apps Script

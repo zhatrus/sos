@@ -92,79 +92,17 @@ async function testPushNotification() {
             return;
         }
 
-        // Перевіряємо підтримку push-повідомлень
-        if (!('serviceWorker' in navigator)) {
-            showToast('Ваш браузер не підтримує Service Worker', 'error');
-            return;
-        }
-
-        if (!('PushManager' in window)) {
-            showToast('Ваш браузер не підтримує Push повідомлення', 'error');
-            return;
-        }
-
-        // Запитуємо дозвіл на повідомлення
-        const permission = await Notification.requestPermission();
-        if (permission !== 'granted') {
-            showToast('Для роботи повідомлень потрібен ваш дозвіл', 'error');
-            return;
-        }
-
-        showToast('Налаштування повідомлень...', 'info');
-
-        // Отримуємо реєстрацію service worker
-        const registration = await navigator.serviceWorker.ready;
         console.log('Service Worker готовий');
-        
-        // Отримуємо поточну підписку
-        let subscription = await registration.pushManager.getSubscription();
-        
-        // Якщо підписка існує, відписуємося для оновлення
-        if (subscription) {
-            console.log('Видаляємо стару підписку');
-            await subscription.unsubscribe();
-        }
 
-        // Отримуємо VAPID публічний ключ
+        // Отримуємо VAPID ключ
         const response = await fetch('/api/vapid-public-key');
         if (!response.ok) {
-            throw new Error('Не вдалося отримати VAPID ключ');
+            throw new Error(`Помилка отримання VAPID ключа: ${response.status}`);
         }
-        const vapidPublicKey = await response.text();
+        const { publicKey } = await response.json();
         console.log('Отримано VAPID ключ');
-        
-        // Конвертуємо VAPID ключ
-        const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
-        
-        // Створюємо нову підписку
-        console.log('Створюємо нову підписку...');
-        subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: applicationServerKey
-        });
-
-        console.log('Нова підписка створена:', subscription);
-
-        // Зберігаємо підписку на сервері
-        const subscribeResponse = await fetch('/api/push-subscription', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                subscription,
-                emailOrPhone
-            })
-        });
-
-        if (!subscribeResponse.ok) {
-            throw new Error('Помилка при збереженні підписки');
-        }
-
-        showToast('Підписку створено успішно', 'success');
 
         // Відправляємо тестове повідомлення
-        console.log('Відправляємо тестове повідомлення...');
         const testResponse = await fetch('/api/send-push', {
             method: 'POST',
             headers: {
@@ -172,89 +110,110 @@ async function testPushNotification() {
                 'Authorization': 'superpushtoken'
             },
             body: JSON.stringify({
-                users: [emailOrPhone],
                 title: 'Тестове повідомлення',
-                body: 'Це тестове push-повідомлення. Система сповіщень працює коректно!'
+                body: 'Це тестове push-повідомлення',
+                users: [emailOrPhone]
             })
         });
 
         if (!testResponse.ok) {
-            throw new Error(`Помилка відправки: ${testResponse.status}`);
+            const error = await testResponse.json();
+            throw new Error(`Помилка відправки: ${error.message || testResponse.status}`);
         }
 
         const result = await testResponse.json();
         console.log('Результат відправки:', result);
         
-        if (result.results.success.includes(emailOrPhone)) {
-            showToast('Тестове сповіщення надіслано успішно', 'success');
+        if (result.results.failed.length > 0) {
+            showToast(`Помилка відправки: ${result.results.failed[0].error}`, 'error');
         } else {
-            const failedUser = result.results.failed.find(f => f.user === emailOrPhone);
-            console.error('Деталі помилки:', failedUser);
-            throw new Error(failedUser ? failedUser.reason : 'Невідома помилка');
+            showToast('Тестове повідомлення відправлено успішно', 'success');
         }
     } catch (error) {
-        console.error('Помилка при тестуванні сповіщень:', error);
-        showToast('Помилка: ' + error.message, 'error');
-        throw error; // Прокидаємо помилку далі для обробки в обробнику подій
+        console.error('Помилка при тестуванні повідомлень:', error);
+        showToast(`Помилка при тестуванні повідомлень: ${error.message}`, 'error');
     }
-}
-
-// Функція для конвертації VAPID ключа
-function urlBase64ToUint8Array(base64String) {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding)
-        .replace(/\-/g, '+')
-        .replace(/_/g, '/');
-
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-
-    for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
-    }
-    return outputArray;
 }
 
 // Функції для роботи з push-повідомленнями
 async function registerPushSubscription(emailOrPhone) {
     try {
+        console.log('Початок реєстрації push-підписки для:', emailOrPhone);
+        
         // Перевіряємо підтримку push-повідомлень
         if (!('serviceWorker' in navigator)) {
+            console.error('Service Worker не підтримується');
             showToast('Ваш браузер не підтримує Service Worker', 'error');
             return;
         }
 
         if (!('PushManager' in window)) {
+            console.error('Push API не підтримується');
             showToast('Ваш браузер не підтримує Push повідомлення', 'error');
             return;
         }
 
         // Запитуємо дозвіл
+        console.log('Запит на дозвіл push-повідомлень...');
         const permission = await Notification.requestPermission();
+        console.log('Статус дозволу:', permission);
+        
         if (permission !== 'granted') {
+            console.error('Дозвіл на push-повідомлення не надано');
             showToast('Для отримання сповіщень потрібен дозвіл', 'error');
             return;
         }
 
-        // Отримуємо реєстрацію service worker
-        const registration = await navigator.serviceWorker.ready;
+        // Реєструємо Service Worker
+        console.log('Реєстрація Service Worker...');
+        const registration = await navigator.serviceWorker.register('/service-worker.js');
+        console.log('Service Worker зареєстровано:', registration);
 
-        // Отримуємо push-підписку
-        let subscription = await registration.pushManager.getSubscription();
-        
-        if (!subscription) {
-            // Створюємо нову підписку
-            const response = await fetch('/api/vapid-public-key');
-            const vapidPublicKey = await response.text();
-            
-            subscription = await registration.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: vapidPublicKey
+        // Чекаємо активації Service Worker
+        if (registration.installing) {
+            console.log('Очікування встановлення Service Worker...');
+            await new Promise(resolve => {
+                registration.installing.addEventListener('statechange', e => {
+                    if (e.target.state === 'activated') {
+                        console.log('Service Worker активовано');
+                        resolve();
+                    }
+                });
             });
         }
 
+        // Отримуємо push-підписку
+        console.log('Отримання поточної підписки...');
+        let subscription = await registration.pushManager.getSubscription();
+        console.log('Поточна підписка:', subscription);
+        
+        if (!subscription) {
+            console.log('Створення нової підписки...');
+            try {
+                // Отримуємо VAPID ключ
+                const response = await fetch('/api/vapid-public-key');
+                if (!response.ok) {
+                    throw new Error(`Помилка отримання VAPID ключа: ${response.status}`);
+                }
+                const { publicKey } = await response.json();
+                console.log('Отримано публічний VAPID ключ');
+                
+                // Створюємо підписку
+                subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(publicKey)
+                });
+                console.log('Нова підписка створена:', subscription);
+            } catch (error) {
+                console.error('Помилка при створенні підписки:', error);
+                showToast(`Помилка при створенні підписки: ${error.message}`, 'error');
+                return;
+            }
+        }
+
         // Зберігаємо підписку на сервері
-        await fetch('/api/push-subscription', {
+        console.log('Збереження підписки на сервері...');
+        const saveResponse = await fetch('/api/subscribe', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -265,10 +224,52 @@ async function registerPushSubscription(emailOrPhone) {
             })
         });
 
-        showToast('Підписку на сповіщення активовано', 'success');
+        if (!saveResponse.ok) {
+            const errorData = await saveResponse.json();
+            throw new Error(`Помилка збереження підписки: ${errorData.message || saveResponse.status}`);
+        }
+
+        const result = await saveResponse.json();
+        console.log('Підписка успішно збережена на сервері:', result);
+        showToast(`Підписку на сповіщення активовано (${result.subscriptionsCount} пристрої)`, 'success');
     } catch (error) {
         console.error('Помилка при підписці на push-повідомлення:', error);
-        showToast('Помилка при підписці на сповіщення', 'error');
+        showToast(`Помилка при підписці на сповіщення: ${error.message}`, 'error');
+    }
+}
+
+// Функція для конвертації VAPID ключа
+function urlBase64ToUint8Array(base64String) {
+    try {
+        // Видаляємо можливі пробіли
+        base64String = base64String.trim();
+        
+        // Замінюємо URL-safe символи на стандартні base64
+        const base64 = base64String
+            .replace(/-/g, '+')
+            .replace(/_/g, '/');
+
+        // Додаємо padding якщо потрібно
+        const padding = '='.repeat((4 - base64.length % 4) % 4);
+        const base64Padded = base64 + padding;
+
+        console.log('Підготовлений ключ для декодування:', base64Padded);
+
+        // Декодуємо base64 в бінарний рядок
+        const rawData = window.atob(base64Padded);
+        console.log('Довжина декодованих даних:', rawData.length);
+
+        // Конвертуємо бінарний рядок в Uint8Array
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+
+        return outputArray;
+    } catch (error) {
+        console.error('Помилка при конвертації ключа:', error);
+        console.error('Проблемний ключ:', base64String);
+        throw new Error(`Помилка конвертації VAPID ключа: ${error.message}`);
     }
 }
 
