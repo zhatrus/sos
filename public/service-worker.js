@@ -1,21 +1,17 @@
 // Service Worker для обробки push-сповіщень
 
 self.addEventListener('install', function(event) {
-  console.log('[Service Worker] Встановлення');
   self.skipWaiting();
 });
 
 self.addEventListener('activate', function(event) {
-  console.log('[Service Worker] Активація');
   event.waitUntil(self.clients.claim());
 });
 
 self.addEventListener('push', function(event) {
-  console.log('[Service Worker] Отримано push подію:', event);
   
   try {
     const data = event.data.json();
-    console.log('[Service Worker] Дані push-сповіщення:', data);
     
     event.waitUntil(
       self.registration.showNotification(data.title, {
@@ -29,14 +25,12 @@ self.addEventListener('push', function(event) {
       })
     );
     
-    console.log('[Service Worker] Push-сповіщення успішно показано');
   } catch (error) {
     console.error('[Service Worker] Помилка при обробці push-сповіщення:', error);
   }
 });
 
 self.addEventListener('notificationclick', function(event) {
-  console.log('[Service Worker] Користувач клікнув на сповіщення:', event.notification);
   
   event.notification.close();
   event.waitUntil(

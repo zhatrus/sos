@@ -92,7 +92,6 @@ async function testPushNotification() {
             return;
         }
 
-        console.log('Service Worker готовий');
 
         // Отримуємо VAPID ключ
         const response = await fetch('/api/vapid-public-key');
@@ -100,7 +99,6 @@ async function testPushNotification() {
             throw new Error(`Помилка отримання VAPID ключа: ${response.status}`);
         }
         const { publicKey } = await response.json();
-        console.log('Отримано VAPID ключ');
 
         // Відправляємо тестове повідомлення
         const testResponse = await fetch('/api/send-push', {
@@ -122,7 +120,7 @@ async function testPushNotification() {
         }
 
         const result = await testResponse.json();
-        console.log('Результат відправки:', result);
+
         
         if (result.results.failed.length > 0) {
             showToast(`Помилка відправки: ${result.results.failed[0].error}`, 'error');
@@ -130,7 +128,7 @@ async function testPushNotification() {
             showToast('Тестове повідомлення відправлено успішно', 'success');
         }
     } catch (error) {
-        console.error('Помилка при тестуванні повідомлень:', error);
+
         showToast(`Помилка при тестуванні повідомлень: ${error.message}`, 'error');
     }
 }
@@ -138,44 +136,39 @@ async function testPushNotification() {
 // Функції для роботи з push-повідомленнями
 async function registerPushSubscription(emailOrPhone) {
     try {
-        console.log('Початок реєстрації push-підписки для:', emailOrPhone);
+
         
         // Перевіряємо підтримку push-повідомлень
         if (!('serviceWorker' in navigator)) {
-            console.error('Service Worker не підтримується');
             showToast('Ваш браузер не підтримує Service Worker', 'error');
             return;
         }
 
         if (!('PushManager' in window)) {
-            console.error('Push API не підтримується');
             showToast('Ваш браузер не підтримує Push повідомлення', 'error');
             return;
         }
 
         // Запитуємо дозвіл
-        console.log('Запит на дозвіл push-повідомлень...');
         const permission = await Notification.requestPermission();
-        console.log('Статус дозволу:', permission);
         
         if (permission !== 'granted') {
-            console.error('Дозвіл на push-повідомлення не надано');
             showToast('Для отримання сповіщень потрібен дозвіл', 'error');
             return;
         }
 
         // Реєструємо Service Worker
-        console.log('Реєстрація Service Worker...');
+
         const registration = await navigator.serviceWorker.register('/service-worker.js');
-        console.log('Service Worker зареєстровано:', registration);
+
 
         // Чекаємо активації Service Worker
         if (registration.installing) {
-            console.log('Очікування встановлення Service Worker...');
+
             await new Promise(resolve => {
                 registration.installing.addEventListener('statechange', e => {
                     if (e.target.state === 'activated') {
-                        console.log('Service Worker активовано');
+
                         resolve();
                     }
                 });
@@ -183,12 +176,11 @@ async function registerPushSubscription(emailOrPhone) {
         }
 
         // Отримуємо push-підписку
-        console.log('Отримання поточної підписки...');
+
         let subscription = await registration.pushManager.getSubscription();
-        console.log('Поточна підписка:', subscription);
         
         if (!subscription) {
-            console.log('Створення нової підписки...');
+
             try {
                 // Отримуємо VAPID ключ
                 const response = await fetch('/api/vapid-public-key');
@@ -196,23 +188,22 @@ async function registerPushSubscription(emailOrPhone) {
                     throw new Error(`Помилка отримання VAPID ключа: ${response.status}`);
                 }
                 const { publicKey } = await response.json();
-                console.log('Отримано публічний VAPID ключ');
+
                 
                 // Створюємо підписку
                 subscription = await registration.pushManager.subscribe({
                     userVisibleOnly: true,
                     applicationServerKey: urlBase64ToUint8Array(publicKey)
                 });
-                console.log('Нова підписка створена:', subscription);
+
             } catch (error) {
-                console.error('Помилка при створенні підписки:', error);
+
                 showToast(`Помилка при створенні підписки: ${error.message}`, 'error');
                 return;
             }
         }
 
         // Зберігаємо підписку на сервері
-        console.log('Збереження підписки на сервері...');
         const saveResponse = await fetch('/api/subscribe', {
             method: 'POST',
             headers: {
@@ -230,10 +221,8 @@ async function registerPushSubscription(emailOrPhone) {
         }
 
         const result = await saveResponse.json();
-        console.log('Підписка успішно збережена на сервері:', result);
         showToast(`Підписку на сповіщення активовано (${result.subscriptionsCount} пристрої)`, 'success');
     } catch (error) {
-        console.error('Помилка при підписці на push-повідомлення:', error);
         showToast(`Помилка при підписці на сповіщення: ${error.message}`, 'error');
     }
 }
@@ -253,12 +242,10 @@ function urlBase64ToUint8Array(base64String) {
         const padding = '='.repeat((4 - base64.length % 4) % 4);
         const base64Padded = base64 + padding;
 
-        console.log('Підготовлений ключ для декодування:', base64Padded);
-
+        
         // Декодуємо base64 в бінарний рядок
         const rawData = window.atob(base64Padded);
-        console.log('Довжина декодованих даних:', rawData.length);
-
+        
         // Конвертуємо бінарний рядок в Uint8Array
         const outputArray = new Uint8Array(rawData.length);
         for (let i = 0; i < rawData.length; ++i) {
@@ -267,8 +254,6 @@ function urlBase64ToUint8Array(base64String) {
 
         return outputArray;
     } catch (error) {
-        console.error('Помилка при конвертації ключа:', error);
-        console.error('Проблемний ключ:', base64String);
         throw new Error(`Помилка конвертації VAPID ключа: ${error.message}`);
     }
 }
@@ -341,7 +326,6 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 await testPushNotification();
             } catch (error) {
-                console.error('Помилка при тестуванні повідомлень:', error);
                 showToast('Помилка: ' + error.message, 'error');
             }
         });
@@ -368,6 +352,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// Info popup functionality
+const infoButton = document.getElementById('infoButton');
+const infoPopup = document.getElementById('infoPopup');
+const closeInfoPopup = document.getElementById('closeInfoPopup');
+
+infoButton.addEventListener('click', () => {
+    infoPopup.style.display = 'flex';
+});
+
+closeInfoPopup.addEventListener('click', () => {
+    infoPopup.style.display = 'none';
+});
+
+// Закриття popup при кліку поза його межами
+infoPopup.addEventListener('click', (e) => {
+    if (e.target === infoPopup) {
+        infoPopup.style.display = 'none';
+    }
+});
+
 // Service Worker реєстрація
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', async () => {
@@ -375,9 +379,8 @@ if ('serviceWorker' in navigator) {
             const registration = await navigator.serviceWorker.register('/sw.js', {
                 scope: '/'
             });
-            console.log('Service Worker зареєстровано:', registration);
+            
         } catch (error) {
-            console.error('Service Worker не зареєстровано:', error);
             showToast('Помилка реєстрації Service Worker: ' + error.message, 'error');
         }
     });
@@ -406,7 +409,6 @@ window.addEventListener('load', async () => {
                 document.getElementById('logoutButton').style.display = 'none';
             }
         } catch (error) {
-            console.error('Помилка при автоматичній авторизації:', error);
             localStorage.removeItem('user');
             document.getElementById('testButton').style.display = 'none';
             document.getElementById('logoutButton').style.display = 'none';
@@ -419,6 +421,6 @@ window.addEventListener('load', async () => {
 
 // Додаємо обробники подій
 document.getElementById('loginButton').addEventListener('click', handleLogin);
-document.getElementById('infoButton').addEventListener('click', () => {
-    showToast('Інформація буде доступна незабаром', 'info');
-});
+// document.getElementById('infoButton').addEventListener('click', () => {
+//     showToast('Інформація буде доступна незабаром', 'info');
+// });

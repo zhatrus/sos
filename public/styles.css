@@ -375,11 +375,11 @@ body>.bottom-panel button.logout:hover {
 }
 
 .animate-title {
-    animation: slide-down 0.9s ease-out;
+    animation: slide-down 0.7s ease-out;
 }
 
 .animate-up {
-    animation: slide-up 0.9s ease-out;
+    animation: slide-up 0.7s ease-out;
     animation-fill-mode: both;
 }
 
@@ -405,6 +405,72 @@ body>.bottom-panel button.logout:hover {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+/* Стилі для popup вікна */
+.popup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.popup-content {
+    background: white;
+    /* padding: 30px; */
+    padding: 30px 30px 55px 30px;
+    border-radius: 20px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    animation: popup-appear 0.3s ease-out;
+}
+
+.popup-text {
+    margin: 20px 0;
+    line-height: 1.6;
+}
+
+.popup-text h3 {
+    margin: 15px 0 10px 0;
+    color: #333;
+}
+
+.popup-text ol {
+    padding-left: 20px;
+}
+
+.popup-text li {
+    margin-bottom: 10px;
+}
+
+@keyframes popup-appear {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+#closeInfoPopup {
+    margin-top: 20px;
+    background: #dc3545;
+}
+
+#closeInfoPopup:hover {
+    background: #c82333;
 }
 
 /* Медіа-запити */
