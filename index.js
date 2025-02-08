@@ -284,6 +284,34 @@ app.get('/api/vapid-public-key', (req, res) => {
     }
 });
 
+// Функції для роботи з підписками
+function loadSubscriptions() {
+    try {
+        const filePath = path.join(__dirname, 'subscriptions.json');
+        if (fs.existsSync(filePath)) {
+            const data = fs.readFileSync(filePath, 'utf8');
+            return JSON.parse(data);
+        }
+        return {};
+    } catch (error) {
+        console.error('Помилка завантаження підписок:', error);
+        return {};
+    }
+}
+
+function saveSubscriptions(subscriptions) {
+    try {
+        const filePath = path.join(__dirname, 'subscriptions.json');
+        fs.writeFileSync(filePath, JSON.stringify(subscriptions, null, 2), 'utf8');
+        console.log('Підписки збережено успішно');
+    } catch (error) {
+        console.error('Помилка збереження підписок:', error);
+    }
+}
+
+// Зберігання підписок в пам'яті
+let subscriptions = loadSubscriptions();
+
 // Маршрут для збереження push-підписки
 app.post('/api/subscribe', async (req, res) => {
     try {
@@ -304,28 +332,28 @@ app.post('/api/subscribe', async (req, res) => {
         }
 
         // Завантажуємо існуючі підписки
-        const subscriptions = loadSubscriptions();
+        const existingSubscriptions = loadSubscriptions();
         
         // Перевіряємо чи існує масив підписок для користувача
-        if (!subscriptions[emailOrPhone]) {
-            subscriptions[emailOrPhone] = [];
+        if (!existingSubscriptions[emailOrPhone]) {
+            existingSubscriptions[emailOrPhone] = [];
         }
 
         // Перевіряємо чи вже існує така підписка
-        const existingSubIndex = subscriptions[emailOrPhone].findIndex(
+        const existingSubIndex = existingSubscriptions[emailOrPhone].findIndex(
             sub => sub.endpoint === subscription.endpoint
         );
 
         if (existingSubIndex !== -1) {
             // Оновлюємо існуючу підписку
-            subscriptions[emailOrPhone][existingSubIndex] = subscription;
+            existingSubscriptions[emailOrPhone][existingSubIndex] = subscription;
             logToFile('push_subscription_updated', {
                 emailOrPhone,
                 endpoint: subscription.endpoint
             });
         } else {
             // Додаємо нову підписку
-            subscriptions[emailOrPhone].push(subscription);
+            existingSubscriptions[emailOrPhone].push(subscription);
             logToFile('push_subscription_added', {
                 emailOrPhone,
                 endpoint: subscription.endpoint
@@ -333,16 +361,16 @@ app.post('/api/subscribe', async (req, res) => {
         }
         
         // Зберігаємо оновлені підписки
-        saveSubscriptions(subscriptions);
+        saveSubscriptions(existingSubscriptions);
         
         logToFile('push_subscription_success', {
             emailOrPhone,
-            subscriptionsCount: subscriptions[emailOrPhone].length
+            subscriptionsCount: existingSubscriptions[emailOrPhone].length
         });
 
         res.status(201).json({ 
             message: 'Підписку успішно збережено',
-            subscriptionsCount: subscriptions[emailOrPhone].length
+            subscriptionsCount: existingSubscriptions[emailOrPhone].length
         });
     } catch (error) {
         logToFile('push_subscription_error', {
@@ -373,7 +401,6 @@ app.post('/api/send-push', authenticatePush, async (req, res) => {
             return res.status(400).json({ message: 'Відсутні обов\'язкові поля' });
         }
 
-        const subscriptions = loadSubscriptions();
         const notificationPayload = {
             title,
             body,
