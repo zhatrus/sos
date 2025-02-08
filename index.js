@@ -66,17 +66,50 @@ function logToFile(type, data) {
     );
 }
 
+// Load user configuration
+function loadUserConfig() {
+    try {
+        const configPath = path.join(__dirname, 'config.json');
+        const configData = fs.readFileSync(configPath, 'utf8');
+        return JSON.parse(configData);
+    } catch (error) {
+        console.error('Error loading config.json:', error);
+        return { ALLOWED_USERS: [] };
+    }
+}
+
+// Save user configuration
+function saveUserConfig(config) {
+    try {
+        const configPath = path.join(__dirname, 'config.json');
+        fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+        return true;
+    } catch (error) {
+        console.error('Error saving config.json:', error);
+        return false;
+    }
+}
+
 //  Авторізація
 app.post('/api/auth', (req, res) => {
     const { emailOrPhone } = req.body;
-    const allowedUsers = process.env.ALLOWED_USERS.split(',');
+    const config = loadUserConfig();
+    const allowedUsers = config.ALLOWED_USERS.map(user => user.phone);
 
     // Логуємо спробу авторизації
     logToFile('auth_attempt', { emailOrPhone });
 
-    if (allowedUsers.includes(emailOrPhone)) {
-        logToFile('auth_success', { emailOrPhone });
-        return res.status(200).json({ message: 'Авторизація успішна!' });
+    const userInfo = config.ALLOWED_USERS.find(user => user.phone === emailOrPhone);
+    if (userInfo) {
+        logToFile('auth_success', { emailOrPhone, name: userInfo.name, city: userInfo.city });
+        return res.status(200).json({ 
+            message: 'Авторизація успішна!',
+            user: {
+                name: userInfo.name,
+                city: userInfo.city,
+                role: userInfo.role
+            }
+        });
     } else {
         logToFile('auth_failed', { emailOrPhone });
         return res.status(401).json({ message: 'Доступ заборонено!' });
@@ -162,68 +195,50 @@ app.post('/api/update-users', authenticate, async (req, res) => {
         const { users } = req.body;
         
         if (!Array.isArray(users)) {
-            return res.status(400).json({ message: 'Список користувачів повинен бути масивом' });
+            return res.status(400).json({ 
+                message: 'Список користувачів повинен бути масивом',
+                received: users 
+            });
         }
 
-        // Читаємо поточний вміст .env файлу
-        const envPath = path.join(__dirname, '.env');
-        let envContent = await fs.promises.readFile(envPath, 'utf8');
-        
-        // Розділяємо на рядки
-        const lines = envContent.split('\n');
-        
-        // Знаходимо та оновлюємо рядок з ALLOWED_USERS
-        const updatedLines = lines.map(line => {
-            if (line.startsWith('ALLOWED_USERS=')) {
-                return `ALLOWED_USERS=${users.join(',')}`;
+        // Validate user objects
+        const formattedUsers = users.map(user => {
+            // Перевірка наявності всіх обов'язкових полів
+            if (!user.phone || !user.name || !user.city || !user.role) {
+                throw new Error(`Неповні дані користувача: ${JSON.stringify(user)}`);
             }
-            return line;
+
+            // Зберігаємо дані як є, без форматування
+            return {
+                phone: user.phone.toString(), // Може бути email або телефон
+                name: user.name.toString(),
+                city: user.city.toString(),
+                role: user.role.toString()
+            };
         });
-        
-        // Зберігаємо оновлений вміст
-        await fs.promises.writeFile(envPath, updatedLines.join('\n'));
-        
-        // Оновлюємо змінну середовища в поточному процесі
-        process.env.ALLOWED_USERS = users.join(',');
-        
-        // Логуємо оновлення
-        logToFile('users_list_updated', { count: users.length });
-        
-        res.json({ message: 'Список користувачів успішно оновлено' });
+
+        const config = { ALLOWED_USERS: formattedUsers };
+        if (saveUserConfig(config)) {
+            logToFile('users_list_updated', { 
+                count: formattedUsers.length,
+                timestamp: new Date().toISOString()
+            });
+            res.json({ 
+                message: 'Список користувачів успішно оновлено',
+                usersCount: formattedUsers.length
+            });
+        } else {
+            throw new Error('Помилка збереження конфігурації користувачів');
+        }
     } catch (error) {
         console.error('Помилка при оновленні списку користувачів:', error);
         logToFile('users_list_update_error', { error: error.message });
-        res.status(500).json({ message: 'Помилка при оновленні списку користувачів' });
+        res.status(500).json({ 
+            message: 'Помилка при оновленні списку користувачів',
+            error: error.message 
+        });
     }
 });
-
-// Функція для роботи з підписками
-function loadSubscriptions() {
-    try {
-        const filePath = path.join(__dirname, 'subscriptions.json');
-        if (fs.existsSync(filePath)) {
-            const data = fs.readFileSync(filePath, 'utf8');
-            return JSON.parse(data);
-        }
-        return {};
-    } catch (error) {
-        console.error('Помилка завантаження підписок:', error);
-        return {};
-    }
-}
-
-function saveSubscriptions(subscriptions) {
-    try {
-        const filePath = path.join(__dirname, 'subscriptions.json');
-        fs.writeFileSync(filePath, JSON.stringify(subscriptions, null, 2), 'utf8');
-        console.log('Підписки збережено успішно');
-    } catch (error) {
-        console.error('Помилка збереження підписок:', error);
-    }
-}
-
-// Зберігання підписок
-let subscriptions = loadSubscriptions();
 
 // Маршрут для отримання VAPID публічного ключа
 app.get('/api/vapid-public-key', (req, res) => {

@@ -1,1 +1,110 @@
-[] 
+[
+  {
+    "emailOrPhone": "zkhatrus@caritas.ua",
+    "status": "Все норм, вдома",
+    "additionalInfo": "",
+    "timestamp": "2025-01-28T08:46:12.138Z"
+  },
+  {
+    "emailOrPhone": "zkhatrus@caritas.ua",
+    "status": "Норм (але немає зв'язку/світла/тепло/інше)",
+    "additionalInfo": "",
+    "timestamp": "2025-01-28T08:46:13.813Z"
+  },
+  {
+    "emailOrPhone": "zkhatrus@caritas.ua",
+    "status": "Маю проблеми, не критично",
+    "additionalInfo": "",
+    "timestamp": "2025-01-28T08:46:14.912Z"
+  },
+  {
+    "emailOrPhone": "zkhatrus@caritas.ua",
+    "status": "Потрібна допомога!",
+    "additionalInfo": "",
+    "timestamp": "2025-01-28T08:46:17.249Z"
+  },
+  {
+    "emailOrPhone": "zkhatrus@caritas.ua",
+    "status": "Потрібна допомога!",
+    "additionalInfo": "123123341234",
+    "timestamp": "2025-01-28T08:46:19.768Z"
+  },
+  {
+    "emailOrPhone": "zkhatrus@caritas.ua",
+    "status": "Все норм, вдома",
+    "additionalInfo": "",
+    "timestamp": "2025-01-28T10:22:59.882Z"
+  },
+  {
+    "emailOrPhone": "zkhatrus@caritas.ua",
+    "status": "Все норм, вдома",
+    "additionalInfo": "",
+    "timestamp": "2025-01-29T08:07:14.068Z"
+  },
+  {
+    "emailOrPhone": "zkhatrus@caritas.ua",
+    "status": "Все норм, вдома",
+    "additionalInfo": "",
+    "timestamp": "2025-01-29T10:17:28.393Z"
+  },
+  {
+    "emailOrPhone": "33",
+    "status": "Норм (але немає зв'язку/світла/тепло/інше)",
+    "additionalInfo": "",
+    "timestamp": "2025-01-29T11:33:43.201Z"
+  },
+  {
+    "emailOrPhone": "33",
+    "status": "Потрібна допомога!",
+    "additionalInfo": "232323",
+    "timestamp": "2025-01-29T11:34:06.617Z"
+  },
+  {
+    "emailOrPhone": "380633769366",
+    "status": "Все норм, вдома",
+    "additionalInfo": "",
+    "timestamp": "2025-01-30T12:27:00.986Z"
+  },
+  {
+    "emailOrPhone": "380633769366",
+    "status": "Все норм, вдома",
+    "additionalInfo": "",
+    "timestamp": "2025-01-30T12:27:46.372Z"
+  },
+  {
+    "emailOrPhone": "380633769366",
+    "status": "Все норм, вдома",
+    "additionalInfo": "",
+    "timestamp": "2025-01-30T12:30:48.412Z"
+  },
+  {
+    "emailOrPhone": "380633769366",
+    "status": "Норм (але немає зв'язку/світла/тепло/інше)",
+    "additionalInfo": "",
+    "timestamp": "2025-01-30T12:38:32.476Z"
+  },
+  {
+    "emailOrPhone": "22",
+    "status": "Потрібна допомога!",
+    "additionalInfo": "=11",
+    "timestamp": "2025-01-31T09:23:32.589Z"
+  },
+  {
+    "emailOrPhone": "380506992033",
+    "status": "Норм (але немає зв'язку/світла/тепло/інше)",
+    "additionalInfo": "",
+    "timestamp": "2025-01-31T09:24:54.472Z"
+  },
+  {
+    "emailOrPhone": "zkhatrus@caritas.ua",
+    "status": "Все норм, вдома",
+    "additionalInfo": "",
+    "timestamp": "2025-01-31T09:29:52.618Z"
+  },
+  {
+    "emailOrPhone": "zkhatrus@caritas.ua",
+    "status": "Все норм, вдома",
+    "additionalInfo": "Я в Дніпрі",
+    "timestamp": "2025-01-31T09:31:17.969Z"
+  }
+]

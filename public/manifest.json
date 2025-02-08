@@ -1,6 +1,6 @@
 {
   "name": "Caritas Status App",
-  "short_name": "Caritas Status",
+  "short_name": "Caritas",
   "description": "Додаток для відстеження статусу користувачів",
   "start_url": "/",
   "display": "standalone",
