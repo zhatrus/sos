@@ -1,0 +1,16 @@
+{
+  "ALLOWED_USERS": [
+    {
+      "phone": "380955150667",
+      "name": "User1",
+      "city": "Kyiv",
+      "role": "admin"
+    },
+    {
+      "phone": "380982671462",
+      "name": "User2",
+      "city": "Lviv",
+      "role": "user"
+    }
+  ]
+}
