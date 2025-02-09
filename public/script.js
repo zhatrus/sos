@@ -39,12 +39,39 @@ function showToast(message, type = 'error') {
 // Функція виходу
 function handleLogout() {
     localStorage.removeItem('user');
+    localStorage.removeItem('userData');
     document.getElementById('auth').style.display = 'block';
     document.getElementById('status-form').style.display = 'none';
     document.getElementById('emailOrPhone').value = '';
     document.getElementById('testButton').style.display = 'none';
     document.getElementById('logoutButton').style.display = 'none';
     showToast('Ви вийшли з системи', 'success');
+}
+
+// Функція для перетворення імені в кличний відмінок
+function toVocativeCase(name) {
+    if (!name) return '';
+    
+    if (name.endsWith('а')) {
+        return name.slice(0, -1) + 'о'; // Анна → Анно
+    } else if (name.endsWith('я')) {
+        return name.slice(0, -1) + 'е'; // Наталя → Натале
+    } else if (/[бвгґджзклмнпрстфхцчшщ]$/.test(name)) {
+        return name + 'е'; // Петро → Петре, Іван → Іване
+    } else {
+        return name; // якщо ім'я не підпадає під правила
+    }
+}
+
+// Функція для оновлення заголовку форми
+function updateFormTitle(userData) {
+    const titleElement = document.getElementById('form-title');
+    if (userData && userData.name) {
+        const vocativeName = toVocativeCase(userData.name);
+        titleElement.textContent = `${vocativeName}, оберіть свій статус:`;
+    } else {
+        titleElement.textContent = 'Оберіть свій статус:';
+    }
 }
 
 // Логіка авторизації
@@ -67,12 +94,16 @@ async function handleLogin(event) {
             body: JSON.stringify({ emailOrPhone }),
         });
 
+        const data = await response.json();
+
         if (response.ok) {
             localStorage.setItem('user', emailOrPhone);
+            localStorage.setItem('userData', JSON.stringify(data.user));
             document.getElementById('auth').style.display = 'none';
             document.getElementById('status-form').style.display = 'block';
             document.getElementById('testButton').style.display = 'block';
             document.getElementById('logoutButton').style.display = 'block';
+            updateFormTitle(data.user);
             showToast('Успішна авторизація!', 'success');
             await registerPushSubscription(emailOrPhone);
         } else {
@@ -80,56 +111,6 @@ async function handleLogin(event) {
         }
     } catch (error) {
         showToast('Помилка авторизації: ' + error.message);
-    }
-}
-
-// Функція для тестування push-повідомлень
-async function testPushNotification() {
-    try {
-        const emailOrPhone = localStorage.getItem('user');
-        if (!emailOrPhone) {
-            showToast('Спочатку потрібно авторизуватися', 'error');
-            return;
-        }
-
-
-        // Отримуємо VAPID ключ
-        const response = await fetch('/api/vapid-public-key');
-        if (!response.ok) {
-            throw new Error(`Помилка отримання VAPID ключа: ${response.status}`);
-        }
-        const { publicKey } = await response.json();
-
-        // Відправляємо тестове повідомлення
-        const testResponse = await fetch('/api/send-push', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'superpushtoken'
-            },
-            body: JSON.stringify({
-                title: 'Тестове повідомлення',
-                body: 'Це тестове push-повідомлення',
-                users: [emailOrPhone]
-            })
-        });
-
-        if (!testResponse.ok) {
-            const error = await testResponse.json();
-            throw new Error(`Помилка відправки: ${error.message || testResponse.status}`);
-        }
-
-        const result = await testResponse.json();
-
-        
-        if (result.results.failed.length > 0) {
-            showToast(`Помилка відправки: ${result.results.failed[0].error}`, 'error');
-        } else {
-            showToast('Тестове повідомлення відправлено успішно', 'success');
-        }
-    } catch (error) {
-
-        showToast(`Помилка при тестуванні повідомлень: ${error.message}`, 'error');
     }
 }
 
@@ -255,6 +236,56 @@ function urlBase64ToUint8Array(base64String) {
         return outputArray;
     } catch (error) {
         throw new Error(`Помилка конвертації VAPID ключа: ${error.message}`);
+    }
+}
+
+// Функція для тестування push-повідомлень
+async function testPushNotification() {
+    try {
+        const emailOrPhone = localStorage.getItem('user');
+        if (!emailOrPhone) {
+            showToast('Спочатку потрібно авторизуватися', 'error');
+            return;
+        }
+
+
+        // Отримуємо VAPID ключ
+        const response = await fetch('/api/vapid-public-key');
+        if (!response.ok) {
+            throw new Error(`Помилка отримання VAPID ключа: ${response.status}`);
+        }
+        const { publicKey } = await response.json();
+
+        // Відправляємо тестове повідомлення
+        const testResponse = await fetch('/api/send-push', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'superpushtoken'
+            },
+            body: JSON.stringify({
+                title: 'Тестове повідомлення',
+                body: 'Це тестове push-повідомлення',
+                users: [emailOrPhone]
+            })
+        });
+
+        if (!testResponse.ok) {
+            const error = await testResponse.json();
+            throw new Error(`Помилка відправки: ${error.message || testResponse.status}`);
+        }
+
+        const result = await testResponse.json();
+
+        
+        if (result.results.failed.length > 0) {
+            showToast(`Помилка відправки: ${result.results.failed[0].error}`, 'error');
+        } else {
+            showToast('Тестове повідомлення відправлено успішно', 'success');
+        }
+    } catch (error) {
+
+        showToast(`Помилка при тестуванні повідомлень: ${error.message}`, 'error');
     }
 }
 
@@ -389,6 +420,7 @@ if ('serviceWorker' in navigator) {
 // Перевірка авторизації при завантаженні
 window.addEventListener('load', async () => {
     const user = localStorage.getItem('user');
+    const userData = localStorage.getItem('userData');
     if (user) {
         try {
             const response = await fetch('/api/auth', {
@@ -398,20 +430,20 @@ window.addEventListener('load', async () => {
             });
 
             if (response.ok) {
+                const data = await response.json();
+                localStorage.setItem('userData', JSON.stringify(data.user));
                 document.getElementById('auth').style.display = 'none';
                 document.getElementById('status-form').style.display = 'block';
                 document.getElementById('testButton').style.display = 'block';
                 document.getElementById('logoutButton').style.display = 'block';
-                showToast('Автоматичний вхід успішний!', 'success');
+                updateFormTitle(data.user);
+                await registerPushSubscription(user);
             } else {
-                localStorage.removeItem('user');
-                document.getElementById('testButton').style.display = 'none';
-                document.getElementById('logoutButton').style.display = 'none';
+                handleLogout();
             }
         } catch (error) {
-            localStorage.removeItem('user');
-            document.getElementById('testButton').style.display = 'none';
-            document.getElementById('logoutButton').style.display = 'none';
+            console.error('Error during auto-login:', error);
+            handleLogout();
         }
     } else {
         document.getElementById('testButton').style.display = 'none';
