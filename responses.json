@@ -106,5 +106,43 @@
     "status": "Все норм, вдома",
     "additionalInfo": "Я в Дніпрі",
     "timestamp": "2025-01-31T09:31:17.969Z"
+  },
+  {
+    "emailOrPhone": "22",
+    "status": "Маю проблеми, не критично",
+    "additionalInfo": "",
+    "timestamp": "2025-02-09T09:25:52.866Z"
+  },
+  {
+    "emailOrPhone": "22",
+    "status": "Потрібна допомога!",
+    "additionalInfo": "2323232232323",
+    "timestamp": "2025-02-09T09:25:57.402Z"
+  },
+  {
+    "emailOrPhone": "380956053736",
+    "status": "Все норм, вдома",
+    "additionalInfo": "",
+    "timestamp": "2025-02-09T11:02:19.794Z"
+  },
+  {
+    "emailOrPhone": "22",
+    "status": "Все норм, вдома",
+    "additionalInfo": "",
+    "timestamp": "2025-02-09T11:02:36.088Z"
+  },
+  {
+    "emailOrPhone": "22",
+    "status": "Потрібна допомога!",
+    "additionalInfo": "1234",
+    "timestamp": "2025-02-09T11:02:39.605Z"
+  },
+  {
+    "emailOrPhone": "22",
+    "status": "Все норм, вдома",
+    "additionalInfo": "",
+    "timestamp": "2025-02-09T11:04:56.383Z",
+    "city": "town",
+    "role": "text"
   }
 ]

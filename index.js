@@ -66,48 +66,50 @@ function logToFile(type, data) {
     );
 }
 
-// Load user configuration
-function loadUserConfig() {
+// Функція для роботи з користувачами
+function loadUsers() {
     try {
-        const configPath = path.join(__dirname, 'config.json');
-        const configData = fs.readFileSync(configPath, 'utf8');
-        return JSON.parse(configData);
+        const usersPath = path.join(__dirname, 'data', 'users.json');
+        if (!fs.existsSync(usersPath)) {
+            fs.writeFileSync(usersPath, JSON.stringify({ users: [] }), 'utf8');
+            return { users: [] };
+        }
+        const data = fs.readFileSync(usersPath, 'utf8');
+        return JSON.parse(data);
     } catch (error) {
-        console.error('Error loading config.json:', error);
-        return { ALLOWED_USERS: [] };
+        console.error('Помилка при завантаженні користувачів:', error);
+        return { users: [] };
     }
 }
 
-// Save user configuration
-function saveUserConfig(config) {
+function saveUsers(users) {
     try {
-        const configPath = path.join(__dirname, 'config.json');
-        fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-        return true;
+        const usersPath = path.join(__dirname, 'data', 'users.json');
+        fs.writeFileSync(usersPath, JSON.stringify({ users }, null, 2), 'utf8');
     } catch (error) {
-        console.error('Error saving config.json:', error);
-        return false;
+        console.error('Помилка при збереженні користувачів:', error);
+        throw error;
     }
 }
 
 //  Авторізація
 app.post('/api/auth', (req, res) => {
     const { emailOrPhone } = req.body;
-    const config = loadUserConfig();
-    const allowedUsers = config.ALLOWED_USERS.map(user => user.phone);
+    const { users } = loadUsers();
 
     // Логуємо спробу авторизації
     logToFile('auth_attempt', { emailOrPhone });
 
-    const userInfo = config.ALLOWED_USERS.find(user => user.phone === emailOrPhone);
-    if (userInfo) {
-        logToFile('auth_success', { emailOrPhone, name: userInfo.name, city: userInfo.city });
+    const user = users.find(u => u.phone === emailOrPhone);
+
+    if (user) {
+        logToFile('auth_success', { emailOrPhone, user });
         return res.status(200).json({ 
             message: 'Авторизація успішна!',
             user: {
-                name: userInfo.name,
-                city: userInfo.city,
-                role: userInfo.role
+                name: user.name,
+                city: user.city,
+                role: user.role
             }
         });
     } else {
@@ -116,34 +118,40 @@ app.post('/api/auth', (req, res) => {
     }
 });
 
-// Маршрут для прийому відповідей
-app.post('/api/response', (req, res) => {
-    const { emailOrPhone, status, additionalInfo } = req.body;
+// Оновлення списку користувачів
+app.post('/api/update-users', authenticate, async (req, res) => {
+    try {
+        const { users } = req.body;
+        
+        if (!Array.isArray(users)) {
+            return res.status(400).json({ message: 'Невірний формат даних. Очікується масив користувачів.' });
+        }
 
-    if (!emailOrPhone || !status) {
-        return res.status(400).json({ message: 'Некоректні дані!' });
+        // Валідація даних користувачів
+        const validUsers = users.filter(user => 
+            user.phone && 
+            user.name && 
+            user.city && 
+            user.role
+        );
+
+        if (validUsers.length === 0) {
+            return res.status(400).json({ message: 'Немає валідних даних користувачів.' });
+        }
+
+        // Зберігаємо користувачів
+        saveUsers(validUsers);
+        
+        logToFile('users_updated', { count: validUsers.length });
+        
+        res.json({ 
+            message: `Успішно оновлено ${validUsers.length} користувачів`,
+            usersCount: validUsers.length
+        });
+    } catch (error) {
+        logToFile('users_update_error', { error: error.message });
+        res.status(500).json({ message: 'Помилка при оновленні користувачів: ' + error.message });
     }
-
-    const response = {
-        emailOrPhone,
-        status,
-        additionalInfo: additionalInfo || '',
-        timestamp: new Date().toISOString(),
-    };
-
-    // Збереження даних у файл responses.json
-    const filePath = path.join(__dirname, 'responses.json');
-    let existingData = [];
-
-    if (fs.existsSync(filePath)) {
-        const fileData = fs.readFileSync(filePath);
-        existingData = JSON.parse(fileData);
-    }
-
-    existingData.push(response);
-
-    fs.writeFileSync(filePath, JSON.stringify(existingData, null, 2));
-    return res.status(201).json({ message: 'Дані збережено!' });
 });
 
 // Маршрут для отримання всіх збережених даних
@@ -195,50 +203,108 @@ app.post('/api/update-users', authenticate, async (req, res) => {
         const { users } = req.body;
         
         if (!Array.isArray(users)) {
-            return res.status(400).json({ 
-                message: 'Список користувачів повинен бути масивом',
-                received: users 
-            });
+            return res.status(400).json({ message: 'Список користувачів повинен бути масивом' });
         }
 
-        // Validate user objects
-        const formattedUsers = users.map(user => {
-            // Перевірка наявності всіх обов'язкових полів
-            if (!user.phone || !user.name || !user.city || !user.role) {
-                throw new Error(`Неповні дані користувача: ${JSON.stringify(user)}`);
+        // Читаємо поточний вміст .env файлу
+        const envPath = path.join(__dirname, '.env');
+        let envContent = await fs.promises.readFile(envPath, 'utf8');
+        
+        // Розділяємо на рядки
+        const lines = envContent.split('\n');
+        
+        // Знаходимо та оновлюємо рядок з ALLOWED_USERS
+        const updatedLines = lines.map(line => {
+            if (line.startsWith('ALLOWED_USERS=')) {
+                return `ALLOWED_USERS=${users.join(',')}`;
             }
-
-            // Зберігаємо дані як є, без форматування
-            return {
-                phone: user.phone.toString(), // Може бути email або телефон
-                name: user.name.toString(),
-                city: user.city.toString(),
-                role: user.role.toString()
-            };
+            return line;
         });
-
-        const config = { ALLOWED_USERS: formattedUsers };
-        if (saveUserConfig(config)) {
-            logToFile('users_list_updated', { 
-                count: formattedUsers.length,
-                timestamp: new Date().toISOString()
-            });
-            res.json({ 
-                message: 'Список користувачів успішно оновлено',
-                usersCount: formattedUsers.length
-            });
-        } else {
-            throw new Error('Помилка збереження конфігурації користувачів');
-        }
+        
+        // Зберігаємо оновлений вміст
+        await fs.promises.writeFile(envPath, updatedLines.join('\n'));
+        
+        // Оновлюємо змінну середовища в поточному процесі
+        process.env.ALLOWED_USERS = users.join(',');
+        
+        // Логуємо оновлення
+        logToFile('users_list_updated', { count: users.length });
+        
+        res.json({ message: 'Список користувачів успішно оновлено' });
     } catch (error) {
         console.error('Помилка при оновленні списку користувачів:', error);
         logToFile('users_list_update_error', { error: error.message });
-        res.status(500).json({ 
-            message: 'Помилка при оновленні списку користувачів',
-            error: error.message 
-        });
+        res.status(500).json({ message: 'Помилка при оновленні списку користувачів' });
     }
 });
+
+// Маршрут для прийому відповідей
+app.post('/api/response', (req, res) => {
+    const { emailOrPhone, status, additionalInfo } = req.body;
+
+    if (!emailOrPhone || !status) {
+        return res.status(400).json({ message: 'Некоректні дані!' });
+    }
+
+    // Отримуємо інформацію про користувача
+    const { users } = loadUsers();
+    const user = users.find(u => u.phone === emailOrPhone);
+
+    const response = {
+        emailOrPhone,
+        status,
+        additionalInfo: additionalInfo || '',
+        timestamp: new Date().toISOString(),
+        city: user ? user.city : 'невідомо',
+        role: user ? user.role : 'невідомо'
+    };
+
+    // Збереження даних у файл responses.json
+    const filePath = path.join(__dirname, 'responses.json');
+    let existingData = [];
+
+    if (fs.existsSync(filePath)) {
+        const fileData = fs.readFileSync(filePath);
+        existingData = JSON.parse(fileData);
+    }
+
+    existingData.push(response);
+
+    fs.writeFileSync(filePath, JSON.stringify(existingData, null, 2));
+    
+    // Логуємо успішне збереження відповіді
+    logToFile('response_saved', response);
+    
+    return res.status(201).json({ message: 'Дані збережено!' });
+});
+
+// Функція для роботи з підписками
+function loadSubscriptions() {
+    try {
+        const filePath = path.join(__dirname, 'subscriptions.json');
+        if (fs.existsSync(filePath)) {
+            const data = fs.readFileSync(filePath, 'utf8');
+            return JSON.parse(data);
+        }
+        return {};
+    } catch (error) {
+        console.error('Помилка завантаження підписок:', error);
+        return {};
+    }
+}
+
+function saveSubscriptions(subscriptions) {
+    try {
+        const filePath = path.join(__dirname, 'subscriptions.json');
+        fs.writeFileSync(filePath, JSON.stringify(subscriptions, null, 2), 'utf8');
+        console.log('Підписки збережено успішно');
+    } catch (error) {
+        console.error('Помилка збереження підписок:', error);
+    }
+}
+
+// Зберігання підписок
+let subscriptions = loadSubscriptions();
 
 // Маршрут для отримання VAPID публічного ключа
 app.get('/api/vapid-public-key', (req, res) => {
@@ -284,34 +350,6 @@ app.get('/api/vapid-public-key', (req, res) => {
     }
 });
 
-// Функції для роботи з підписками
-function loadSubscriptions() {
-    try {
-        const filePath = path.join(__dirname, 'subscriptions.json');
-        if (fs.existsSync(filePath)) {
-            const data = fs.readFileSync(filePath, 'utf8');
-            return JSON.parse(data);
-        }
-        return {};
-    } catch (error) {
-        console.error('Помилка завантаження підписок:', error);
-        return {};
-    }
-}
-
-function saveSubscriptions(subscriptions) {
-    try {
-        const filePath = path.join(__dirname, 'subscriptions.json');
-        fs.writeFileSync(filePath, JSON.stringify(subscriptions, null, 2), 'utf8');
-        console.log('Підписки збережено успішно');
-    } catch (error) {
-        console.error('Помилка збереження підписок:', error);
-    }
-}
-
-// Зберігання підписок в пам'яті
-let subscriptions = loadSubscriptions();
-
 // Маршрут для збереження push-підписки
 app.post('/api/subscribe', async (req, res) => {
     try {
@@ -332,28 +370,28 @@ app.post('/api/subscribe', async (req, res) => {
         }
 
         // Завантажуємо існуючі підписки
-        const existingSubscriptions = loadSubscriptions();
+        const subscriptions = loadSubscriptions();
         
         // Перевіряємо чи існує масив підписок для користувача
-        if (!existingSubscriptions[emailOrPhone]) {
-            existingSubscriptions[emailOrPhone] = [];
+        if (!subscriptions[emailOrPhone]) {
+            subscriptions[emailOrPhone] = [];
         }
 
         // Перевіряємо чи вже існує така підписка
-        const existingSubIndex = existingSubscriptions[emailOrPhone].findIndex(
+        const existingSubIndex = subscriptions[emailOrPhone].findIndex(
             sub => sub.endpoint === subscription.endpoint
         );
 
         if (existingSubIndex !== -1) {
             // Оновлюємо існуючу підписку
-            existingSubscriptions[emailOrPhone][existingSubIndex] = subscription;
+            subscriptions[emailOrPhone][existingSubIndex] = subscription;
             logToFile('push_subscription_updated', {
                 emailOrPhone,
                 endpoint: subscription.endpoint
             });
         } else {
             // Додаємо нову підписку
-            existingSubscriptions[emailOrPhone].push(subscription);
+            subscriptions[emailOrPhone].push(subscription);
             logToFile('push_subscription_added', {
                 emailOrPhone,
                 endpoint: subscription.endpoint
@@ -361,16 +399,16 @@ app.post('/api/subscribe', async (req, res) => {
         }
         
         // Зберігаємо оновлені підписки
-        saveSubscriptions(existingSubscriptions);
+        saveSubscriptions(subscriptions);
         
         logToFile('push_subscription_success', {
             emailOrPhone,
-            subscriptionsCount: existingSubscriptions[emailOrPhone].length
+            subscriptionsCount: subscriptions[emailOrPhone].length
         });
 
         res.status(201).json({ 
             message: 'Підписку успішно збережено',
-            subscriptionsCount: existingSubscriptions[emailOrPhone].length
+            subscriptionsCount: subscriptions[emailOrPhone].length
         });
     } catch (error) {
         logToFile('push_subscription_error', {
@@ -401,6 +439,7 @@ app.post('/api/send-push', authenticatePush, async (req, res) => {
             return res.status(400).json({ message: 'Відсутні обов\'язкові поля' });
         }
 
+        const subscriptions = loadSubscriptions();
         const notificationPayload = {
             title,
             body,
