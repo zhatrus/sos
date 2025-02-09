@@ -599,6 +599,40 @@ app.post('/api/send-notification', authenticatePush, async (req, res) => {
     });
 });
 
+// Оновлення міста користувача
+app.post('/api/update-user-city', async (req, res) => {
+    const { emailOrPhone, city } = req.body;
+    
+    if (!emailOrPhone || !city) {
+        return res.status(400).json({ message: 'Відсутні обов\'язкові дані' });
+    }
+
+    try {
+        const { users } = loadUsers();
+        const userIndex = users.findIndex(u => u.phone === emailOrPhone);
+        
+        if (userIndex === -1) {
+            return res.status(404).json({ message: 'Користувача не знайдено' });
+        }
+
+        // Оновлюємо місто користувача
+        users[userIndex].city = city;
+        
+        // Зберігаємо оновлені дані
+        saveUsers(users);
+        
+        logToFile('user_city_updated', { emailOrPhone, city });
+        
+        res.json({ 
+            message: 'Місто успішно оновлено',
+            user: users[userIndex]
+        });
+    } catch (error) {
+        logToFile('user_city_update_error', { error: error.message });
+        res.status(500).json({ message: 'Помилка при оновленні міста: ' + error.message });
+    }
+});
+
 // Basic route
 app.get('/', (req, res) => {
     res.send('PWA App is running!');

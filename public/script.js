@@ -45,6 +45,8 @@ function handleLogout() {
     document.getElementById('emailOrPhone').value = '';
     document.getElementById('testButton').style.display = 'none';
     document.getElementById('logoutButton').style.display = 'none';
+    // Очищаємо відображення міста при виході
+    updateCityDisplay('');
     showToast('Ви вийшли з системи', 'success');
 }
 
@@ -71,6 +73,44 @@ function updateFormTitle(userData) {
         titleElement.textContent = `${vocativeName}, оберіть свій статус:`;
     } else {
         titleElement.textContent = 'Оберіть свій статус:';
+    }
+}
+
+// Функція для оновлення відображення міста
+function updateCityDisplay(city) {
+    const userCityElement = document.getElementById('userCity');
+    userCityElement.textContent = city || 'не вказано';
+}
+
+// Функція для оновлення міста на сервері
+async function updateUserCity(newCity) {
+    const emailOrPhone = localStorage.getItem('user');
+    if (!emailOrPhone) return;
+
+    try {
+        const response = await fetch('/api/update-user-city', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': localStorage.getItem('user')
+            },
+            body: JSON.stringify({
+                emailOrPhone,
+                city: newCity
+            })
+        });
+
+        if (response.ok) {
+            const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+            userData.city = newCity;
+            localStorage.setItem('userData', JSON.stringify(userData));
+            updateCityDisplay(newCity);
+            showToast('Місто успішно оновлено!', 'success');
+        } else {
+            throw new Error('Помилка при оновленні міста');
+        }
+    } catch (error) {
+        showToast('Помилка при оновленні міста: ' + error.message, 'error');
     }
 }
 
@@ -103,7 +143,9 @@ async function handleLogin(event) {
             document.getElementById('status-form').style.display = 'block';
             document.getElementById('testButton').style.display = 'block';
             document.getElementById('logoutButton').style.display = 'block';
+            // Оновлюємо заголовок та місто з отриманих даних
             updateFormTitle(data.user);
+            updateCityDisplay(data.user.city);
             showToast('Успішна авторизація!', 'success');
             await registerPushSubscription(emailOrPhone);
         } else {
@@ -381,26 +423,49 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast('Функція повідомлення ще не реалізована', 'info');
         });
     }
-});
 
-// Info popup functionality
-const infoButton = document.getElementById('infoButton');
-const infoPopup = document.getElementById('infoPopup');
-const closeInfoPopup = document.getElementById('closeInfoPopup');
+    const changeLocationLink = document.getElementById('changeLocation');
+    const cityModal = document.getElementById('cityModal');
+    const saveCityBtn = document.getElementById('saveCityBtn');
+    const cancelCityBtn = document.getElementById('cancelCityBtn');
+    const citySelect = document.getElementById('citySelect');
 
-infoButton.addEventListener('click', () => {
-    infoPopup.style.display = 'flex';
-});
+    // Показуємо модальне вікно при кліку на "Змінити"
+    changeLocationLink.addEventListener('click', function(e) {
+        e.preventDefault();
+        cityModal.style.display = 'block';
+        const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+        if (userData.city) {
+            citySelect.value = userData.city;
+        }
+    });
 
-closeInfoPopup.addEventListener('click', () => {
-    infoPopup.style.display = 'none';
-});
+    // Зберігаємо вибране місто
+    saveCityBtn.addEventListener('click', async function() {
+        const newCity = citySelect.value;
+        if (!newCity) {
+            showToast('Будь ласка, оберіть місто', 'error');
+            return;
+        }
+        await updateUserCity(newCity);
+        cityModal.style.display = 'none';
+    });
 
-// Закриття popup при кліку поза його межами
-infoPopup.addEventListener('click', (e) => {
-    if (e.target === infoPopup) {
-        infoPopup.style.display = 'none';
-    }
+    // Закриваємо модальне вікно при кліку на "Скасувати"
+    cancelCityBtn.addEventListener('click', function() {
+        cityModal.style.display = 'none';
+    });
+
+    // Закриваємо модальне вікно при кліку поза ним
+    window.addEventListener('click', function(e) {
+        if (e.target === cityModal) {
+            cityModal.style.display = 'none';
+        }
+    });
+
+    // Показуємо поточне місто при завантаженні
+    const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+    updateCityDisplay(userData.city);
 });
 
 // Service Worker реєстрація
@@ -437,6 +502,7 @@ window.addEventListener('load', async () => {
                 document.getElementById('testButton').style.display = 'block';
                 document.getElementById('logoutButton').style.display = 'block';
                 updateFormTitle(data.user);
+                updateCityDisplay(data.user.city);
                 await registerPushSubscription(user);
             } else {
                 handleLogout();
@@ -456,3 +522,23 @@ document.getElementById('loginButton').addEventListener('click', handleLogin);
 // document.getElementById('infoButton').addEventListener('click', () => {
 //     showToast('Інформація буде доступна незабаром', 'info');
 // });
+
+// Info popup functionality
+const infoButton = document.getElementById('infoButton');
+const infoPopup = document.getElementById('infoPopup');
+const closeInfoPopup = document.getElementById('closeInfoPopup');
+
+infoButton.addEventListener('click', () => {
+    infoPopup.style.display = 'flex';
+});
+
+closeInfoPopup.addEventListener('click', () => {
+    infoPopup.style.display = 'none';
+});
+
+// Закриття popup при кліку поза його межами
+infoPopup.addEventListener('click', (e) => {
+    if (e.target === infoPopup) {
+        infoPopup.style.display = 'none';
+    }
+});
