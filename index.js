@@ -633,6 +633,25 @@ app.post('/api/update-user-city', async (req, res) => {
     }
 });
 
+// Отримання списку користувачів
+app.get('/api/users', authenticate, (req, res) => {
+    try {
+        const { users } = loadUsers();
+        
+        // Видаляємо чутливі дані перед відправкою
+        const sanitizedUsers = users.map(user => ({
+            phone: user.phone,
+            name: user.name,
+            city: user.city
+        }));
+        
+        res.json(sanitizedUsers);
+    } catch (error) {
+        logToFile('users_list_error', { error: error.message });
+        res.status(500).json({ message: 'Помилка при отриманні списку користувачів' });
+    }
+});
+
 // Basic route
 app.get('/', (req, res) => {
     res.send('PWA App is running!');
