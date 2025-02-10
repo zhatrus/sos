@@ -561,13 +561,14 @@ app.post('/api/send-notification', authenticatePush, async (req, res) => {
 
     const results = {
         success: [],
-        failed: []
+        failed: [],
+        removed: [] // Додаємо трекінг видалених підписок
     };
 
+    let subscriptionsUpdated = false;
+
     for (const user of users) {
-        const subscription = subscriptions[user];
-        
-        if (!subscription) {
+        if (!subscriptions[user] || subscriptions[user].length === 0) {
             results.failed.push({
                 user,
                 reason: 'Користувач не підписаний на повідомлення'
@@ -575,26 +576,66 @@ app.post('/api/send-notification', authenticatePush, async (req, res) => {
             continue;
         }
 
-        try {
-            const payload = JSON.stringify({
-                title,
-                body
-            });
+        // Перебираємо всі підписки користувача
+        for (const subscription of subscriptions[user]) {
+            try {
+                const payload = JSON.stringify({
+                    title,
+                    body
+                });
 
-            await webpush.sendNotification(subscription, payload);
-            results.success.push(user);
-            logToFile('push_notification_sent', { user, title });
-        } catch (error) {
-            results.failed.push({
-                user,
-                reason: error.message
-            });
-            logToFile('push_notification_failed', { user, error: error.message });
+                await webpush.sendNotification(subscription, payload);
+                results.success.push({
+                    user,
+                    endpoint: subscription.endpoint
+                });
+                logToFile('push_notification_sent', { 
+                    user, 
+                    title,
+                    endpoint: subscription.endpoint 
+                });
+            } catch (error) {
+                const failureInfo = {
+                    user,
+                    endpoint: subscription.endpoint,
+                    error: error.message
+                };
+
+                results.failed.push(failureInfo);
+                logToFile('push_notification_failed', failureInfo);
+
+                // Якщо підписка недійсна (410 - Gone, 404 - Not Found)
+                if (error.statusCode === 410 || error.statusCode === 404) {
+                    subscriptions[user] = subscriptions[user].filter(
+                        sub => sub.endpoint !== subscription.endpoint
+                    );
+                    
+                    results.removed.push({
+                        user,
+                        endpoint: subscription.endpoint,
+                        reason: error.statusCode === 410 ? 'Підписка відкликана' : 'Підписка не знайдена'
+                    });
+                    
+                    logToFile('push_subscription_removed', {
+                        user,
+                        endpoint: subscription.endpoint,
+                        reason: 'Invalid subscription',
+                        statusCode: error.statusCode
+                    });
+
+                    subscriptionsUpdated = true;
+                }
+            }
         }
     }
 
+    // Зберігаємо оновлені підписки, якщо були видалення
+    if (subscriptionsUpdated) {
+        saveSubscriptions(subscriptions);
+    }
+
     res.json({
-        message: 'Відправку завершено',
+        message: `Відправку завершено: ${results.success.length} успішно, ${results.failed.length} невдало, ${results.removed.length} підписок видалено`,
         results
     });
 });
