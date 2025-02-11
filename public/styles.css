@@ -140,6 +140,7 @@ button:active {
     z-index: 1;
     left: 0;
     top: 0;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .status-text {
@@ -163,6 +164,10 @@ button:active {
     background: rgba(0, 123, 255, 0.1);
     border-color: #007bff;
     transform: translateX(10px);
+}
+
+.status-option:active {
+    -webkit-tap-highlight-color: transparent;
 }
 
 #additionalInfoField {
@@ -608,4 +613,40 @@ body>.bottom-panel button.logout:hover {
   to {
     opacity: 1;
   }
+}
+
+/* Стилі для кнопки "Відправити" */
+button[type="submit"] {
+    background-color: #cccccc;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: not-allowed;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    opacity: 0.7;
+}
+
+button[type="submit"]:not(:disabled) {
+    background-color: #007bff;
+    cursor: pointer;
+    opacity: 1;
+}
+
+button[type="submit"]:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+button[type="submit"]:disabled:hover {
+    transform: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Стилі для кнопок на мобільних пристроях */
+button[type="submit"]:active,
+button[type="submit"]:focus {
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
 }

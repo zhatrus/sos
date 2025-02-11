@@ -336,6 +336,20 @@ const statusOptions = document.querySelectorAll('.status-option input[type="radi
 const additionalInfoField = document.getElementById('additionalInfoField');
 const submitButton = document.getElementById('submitButton');
 
+// Функція для перевірки, чи обрано хоча б один варіант
+function checkSelection() {
+    const isAnyOptionSelected = Array.from(statusOptions).some(radio => radio.checked);
+    submitButton.disabled = !isAnyOptionSelected;
+}
+
+// Додаємо обробник подій для кожного radio button
+statusOptions.forEach(option => {
+    option.addEventListener('change', checkSelection);
+});
+
+// Викликаємо перевірку при завантаженні сторінки
+checkSelection();
+
 // Показуємо/приховуємо поле додаткової інформації при зміні статусу
 statusOptions.forEach(radio => {
     radio.addEventListener('change', (e) => {
@@ -541,4 +555,28 @@ infoPopup.addEventListener('click', (e) => {
     if (e.target === infoPopup) {
         infoPopup.style.display = 'none';
     }
+});
+
+// Функція для зняття фокусу з елементів після натискання
+function clearFocus() {
+    if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+    }
+}
+
+// Додаємо обробники для всіх кнопок та radio inputs
+document.addEventListener('DOMContentLoaded', () => {
+    // Для кнопки відправлення
+    const submitButton = document.getElementById('submitButton');
+    if (submitButton) {
+        submitButton.addEventListener('click', clearFocus);
+        submitButton.addEventListener('touchend', clearFocus);
+    }
+
+    // Для radio кнопок
+    const radioButtons = document.querySelectorAll('input[type="radio"]');
+    radioButtons.forEach(radio => {
+        radio.addEventListener('change', clearFocus);
+        radio.addEventListener('touchend', clearFocus);
+    });
 });

@@ -152,5 +152,53 @@
     "timestamp": "2025-02-09T11:16:20.476Z",
     "city": "Київ",
     "role": "text"
+  },
+  {
+    "emailOrPhone": "22",
+    "status": "Потрібна допомога!",
+    "additionalInfo": "",
+    "timestamp": "2025-02-11T13:09:55.528Z",
+    "city": "Івано-Франківськ",
+    "role": "test"
+  },
+  {
+    "emailOrPhone": "22",
+    "status": "Все норм, вдома",
+    "additionalInfo": "",
+    "timestamp": "2025-02-11T13:09:56.897Z",
+    "city": "Івано-Франківськ",
+    "role": "test"
+  },
+  {
+    "emailOrPhone": "22",
+    "status": "Норм (але немає зв'язку/світла/тепло/інше)",
+    "additionalInfo": "",
+    "timestamp": "2025-02-11T13:10:32.581Z",
+    "city": "Івано-Франківськ",
+    "role": "test"
+  },
+  {
+    "emailOrPhone": "22",
+    "status": "Норм (але немає зв'язку/світла/тепло/інше)",
+    "additionalInfo": "",
+    "timestamp": "2025-02-11T13:18:46.309Z",
+    "city": "Івано-Франківськ",
+    "role": "test"
+  },
+  {
+    "emailOrPhone": "22",
+    "status": "Все норм, вдома",
+    "additionalInfo": "",
+    "timestamp": "2025-02-11T13:26:26.656Z",
+    "city": "Івано-Франківськ",
+    "role": "test"
+  },
+  {
+    "emailOrPhone": "22",
+    "status": "Все норм, вдома",
+    "additionalInfo": "",
+    "timestamp": "2025-02-11T13:38:17.709Z",
+    "city": "Івано-Франківськ",
+    "role": "test"
   }
 ]
